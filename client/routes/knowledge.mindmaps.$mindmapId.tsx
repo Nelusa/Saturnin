@@ -297,7 +297,7 @@ export default function MindmapDetailPage() {
                     className="text-xl font-bold"
                 />
             ) : (
-                <CardTitle className="text-xl font-bold flex items-center gap-2">
+                <CardTitle className="text-xl font-bold flex items-center gap-2 break-words [overflow-wrap:anywhere]">
                   <Brain className="h-5 w-5" style={{ color: editedMindmap?.color || "white" }} />
                   {editedMindmap.title}
                 </CardTitle>
@@ -323,12 +323,12 @@ export default function MindmapDetailPage() {
 
               <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as "editor" | "info")}>
                 <div className="flex justify-between items-center">
-                  <TabsList>
-                    <TabsTrigger value="editor" className="flex items-center gap-1">
+                  <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:inline-flex sm:w-auto">
+                    <TabsTrigger value="editor" className="flex items-center gap-1 whitespace-normal text-left">
                       <Brain className="h-4 w-4" />
                       <span>Editor myšlenkové mapy</span>
                     </TabsTrigger>
-                    <TabsTrigger value="info" className="flex items-center gap-1">
+                    <TabsTrigger value="info" className="flex items-center gap-1 whitespace-normal text-left">
                       <Tag className="h-4 w-4" />
                       <span>Informace a tagy</span>
                     </TabsTrigger>

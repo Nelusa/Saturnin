@@ -30,7 +30,11 @@ const AppLayout = ({ children, projects, demo }: AppLayoutProps) => {
     ...sidebarItems.navMain,
     ...sidebarItems.navSettings
   ];
-  const breadcrumbs = getBreadcrumbs(location.pathname, allNavItems);
+  const breadcrumbs = getBreadcrumbs(location.pathname, allNavItems).map(item =>
+    item.isLast && /^\/knowledge\/mindmaps\/[^/]+$/.test(location.pathname)
+      ? { ...item, label: "Myšlenková mapa" }
+      : item
+  );
 
   return (
       <div className="flex h-dvh w-full overflow-hidden bg-background text-foreground">
@@ -39,17 +43,17 @@ const AppLayout = ({ children, projects, demo }: AppLayoutProps) => {
           <AppSidebar projects={projects}/>
           <SidebarInset className="relative flex min-w-0 flex-1 flex-col">
             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background/80 backdrop-blur">
-              <div className="flex items-center gap-2 px-3 flex-1">
+              <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
                 <SidebarTrigger/>
                 <Separator orientation="vertical" className="mr-2 h-4"/>
-                <Breadcrumb>
-                  <BreadcrumbList>
+                <Breadcrumb className="min-w-0 flex-1">
+                  <BreadcrumbList className="flex-nowrap overflow-hidden">
                     {breadcrumbs.map((item, index) => (
                         <Fragment key={item.path}>
-                          {index > 0 && <BreadcrumbSeparator/>}
-                          <BreadcrumbItem>
+                          {index > 0 && <BreadcrumbSeparator className="hidden sm:block"/>}
+                          <BreadcrumbItem className={item.isLast ? "min-w-0" : "hidden shrink-0 sm:inline-flex"}>
                             {item.isLast ? (
-                                <BreadcrumbPage>{item.label}</BreadcrumbPage>
+                                <BreadcrumbPage className="truncate">{item.label}</BreadcrumbPage>
                             ) : (
                                 <BreadcrumbLink href={item.path}>
                                   {item.label}
@@ -60,7 +64,7 @@ const AppLayout = ({ children, projects, demo }: AppLayoutProps) => {
                     ))}
                   </BreadcrumbList>
                 </Breadcrumb>
-                <div className="ml-auto flex items-center gap-2">
+                <div className="ml-auto flex shrink-0 items-center gap-2">
                   <CommandSearch projects={projects} />
                   <ThemeToggle/>
                 </div>
