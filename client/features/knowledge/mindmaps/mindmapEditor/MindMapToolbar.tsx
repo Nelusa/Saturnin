@@ -23,6 +23,7 @@ interface MindMapToolbarProps {
   onExport?: (format: 'png' | 'json' | 'svg') => void;
   onShare?: () => void;
   isPublic?: boolean;
+  isExporting?: boolean;
 }
 
 export function MindMapToolbar({
@@ -38,7 +39,8 @@ export function MindMapToolbar({
   onSave,
   onExport,
   onShare,
-  isPublic
+  isPublic,
+  isExporting
 }: MindMapToolbarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -105,9 +107,9 @@ export function MindMapToolbar({
       {onExport && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline">
+            <Button size="sm" variant="outline" disabled={isExporting}>
               <Download className="h-4 w-4 mr-1" />
-              Exportovat
+              {isExporting ? "Připravuji export…" : "Exportovat"}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>

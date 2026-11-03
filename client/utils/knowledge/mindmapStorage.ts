@@ -10,7 +10,7 @@ const connection = z.object({
   id: z.string().min(1), sourceId: z.string(), targetId: z.string(), label: z.string().optional(),
   style: z.enum(["solid", "dashed", "dotted"]).optional(), color: z.string().optional(), thickness: z.number().optional(),
 }).passthrough();
-const schema = z.object({
+export const mindMapSchema = z.object({
   id: z.string().min(1), title: z.string(), description: z.string(), tags: z.array(z.string()),
   thumbnail: z.string(), createdAt: z.string(), updatedAt: z.string(), author: z.string(),
   nodeCount: z.number().finite(), nodes: z.array(node), connections: z.array(connection),
@@ -37,17 +37,17 @@ export function initializeMindMaps(samples: MindMap[]) {
 }
 export function readMindMaps(): MindMap[] {
   return readRecords().flatMap(record => {
-    const parsed = schema.safeParse(record);
+    const parsed = mindMapSchema.safeParse(record);
     return parsed.success ? [{ ...parsed.data, nodeCount: parsed.data.nodes.length, isPublic: false }] : [];
   });
 }
 export function writeMindMap(map: MindMap, expectedUpdatedAt?: string) {
-  const normalized = schema.parse({ ...map, title: map.title.trim(), nodeCount: map.nodes.length, isPublic: false });
+  const normalized = mindMapSchema.parse({ ...map, title: map.title.trim(), nodeCount: map.nodes.length, isPublic: false });
   if (!normalized.title) throw new Error("Mapa musí mít název.");
   const records = readRecords();
   const index = records.findIndex(record => record !== null && typeof record === "object" && "id" in record && record.id === map.id);
   if (expectedUpdatedAt !== undefined) {
-    const current = index < 0 ? null : schema.safeParse(records[index]);
+    const current = index < 0 ? null : mindMapSchema.safeParse(records[index]);
     if ((index < 0 && hasStoredMindMaps()) || (current && (!current.success || current.data.updatedAt !== expectedUpdatedAt))) {
       throw new MindMapConflictError("Mapa se mezitím změnila nebo byla smazána v jiném okně. Nejprve si exportujte rozpracované změny.");
     }

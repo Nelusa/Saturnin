@@ -1,5 +1,6 @@
 import { useState, createContext, useContext, useMemo } from "react";
-import { Outlet, useLocation, useNavigate } from "@remix-run/react";
+import { Outlet, useLocation, useNavigate, useRouteLoaderData } from "@remix-run/react";
+import type { loader as rootLoader } from "~/root";
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Separator } from "~/components/ui/separator";
 import { Brain, Book, Tag, Network, Search, X } from "lucide-react";
@@ -29,6 +30,7 @@ export const useSearch = () => useContext(SearchContext);
 
 export function KnowledgeLayout() {
   const location = useLocation();
+  const demo = useRouteLoaderData<typeof rootLoader>("root")?.demo;
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -73,6 +75,16 @@ export function KnowledgeLayout() {
         break;
     }
   };
+
+  if (demo && (activeTab === "mindmaps" || activeTab === "library")) return (
+    <SearchContext.Provider value={searchContextValue}>
+      <div className="min-w-0 space-y-6">
+        {activeTab === "library" && <header><p className="text-xs font-semibold uppercase tracking-widest text-primary">Znalosti v souvislostech</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Knihovna dokumentů</h1><p className="mt-2 text-sm text-muted-foreground">Ukázkové dokumenty k prohlížení. Úpravy a synchronizace nejsou součástí veřejného dema.</p></header>}
+        {(location.pathname === "/knowledge/mindmaps" || location.pathname === "/knowledge/library") && <div className="relative max-w-md"><Search className="absolute left-3 top-3 size-4 text-muted-foreground" /><Input aria-label={activeTab === "mindmaps" ? "Hledat mapy" : "Hledat dokumenty"} placeholder={activeTab === "mindmaps" ? "Hledat v názvech, popisech a tazích…" : "Hledat dokumenty…"} value={searchTerm} onChange={event => setSearchTerm(event.target.value)} className="pl-9 pr-10" />{isSearching && <Button variant="ghost" size="icon" aria-label="Vymazat hledání" className="absolute right-0 top-0" onClick={clearSearch}><X className="size-4" /></Button>}</div>}
+        <Outlet />
+      </div>
+    </SearchContext.Provider>
+  );
 
   return (
       <SearchContext.Provider value={searchContextValue}>
