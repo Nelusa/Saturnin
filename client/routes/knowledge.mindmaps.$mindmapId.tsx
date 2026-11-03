@@ -304,7 +304,7 @@ export default function MindmapDetailPage() {
             ) : (
                 <CardTitle className="text-xl font-bold flex items-center gap-2 break-words [overflow-wrap:anywhere]">
                   <Brain className="h-5 w-5" style={{ color: editedMindmap?.color || "white" }} />
-                  {editedMindmap.title}
+                  <h1>{editedMindmap.title}</h1>
                 </CardTitle>
             )}
           </CardHeader>

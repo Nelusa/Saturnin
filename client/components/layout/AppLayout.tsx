@@ -1,4 +1,4 @@
-import {SidebarInset, SidebarProvider, SidebarTrigger} from "~/components/ui/sidebar";
+import {SidebarProvider, SidebarTrigger} from "~/components/ui/sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -42,7 +42,7 @@ const AppLayout = ({ children, projects, demo }: AppLayoutProps) => {
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:rounded focus:bg-background focus:p-3">Přejít na obsah</a>
         <SidebarProvider>
           {demo ? <DemoSidebar /> : <AppSidebar projects={projects}/>}
-          <SidebarInset className="relative flex min-w-0 flex-1 flex-col">
+          <div className="relative flex min-h-svh min-w-0 flex-1 flex-col bg-background">
             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background/80 backdrop-blur">
               <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
                 <SidebarTrigger aria-label="Přepnout navigaci"/>
@@ -80,7 +80,7 @@ const AppLayout = ({ children, projects, demo }: AppLayoutProps) => {
                 {children}
               </div>
             </main>
-          </SidebarInset>
+          </div>
           <Toaster />
         </SidebarProvider>
       </div>
