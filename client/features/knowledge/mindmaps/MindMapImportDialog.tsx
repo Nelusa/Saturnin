@@ -38,7 +38,7 @@ export function MindMapImportDialog({ open, onOpenChange, onImported }: {
       <label htmlFor="map-backup" className="text-sm font-medium">Obsah zálohy JSON</label>
       <Textarea id="map-backup" value={text} disabled={reading} onChange={event => { setText(event.target.value); setError(""); }} rows={7} className="font-mono text-xs" placeholder='{"format":"saturnin-mindmap","version":1,…}' />
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      <div className="flex justify-end gap-2"><Button variant="outline" disabled={reading} onClick={() => onOpenChange(false)}>Zrušit</Button><Button disabled={!text.trim() || reading} onClick={importMap}>Importovat jako novou mapu</Button></div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end"><Button variant="outline" disabled={reading} onClick={() => onOpenChange(false)}>Zrušit</Button><Button disabled={!text.trim() || reading} onClick={importMap}>Importovat jako novou mapu</Button></div>
     </DialogContent>
   </Dialog>;
 }

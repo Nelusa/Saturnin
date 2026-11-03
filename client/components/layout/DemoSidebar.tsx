@@ -12,9 +12,9 @@ export function DemoSidebar() {
       </NavLink>
     </SidebarHeader>
     <SidebarContent>
-      <SidebarGroup><SidebarGroupLabel>Pracovní prostor</SidebarGroupLabel><SidebarGroupContent><SidebarMenu>
+      <SidebarGroup><SidebarGroupLabel className="text-muted-foreground">Pracovní prostor</SidebarGroupLabel><SidebarGroupContent><SidebarMenu>
         {[{ to: "/knowledge/mindmaps", title: "Myšlenkové mapy", icon: Brain }, { to: "/knowledge/library", title: "Knihovna dokumentů", icon: BookOpen }].map(item => <SidebarMenuItem key={item.to}>
-          <SidebarMenuButton asChild className="h-11 [&[aria-current=page]]:bg-primary/10 [&[aria-current=page]]:text-primary [&[aria-current=page]]:font-medium">
+          <SidebarMenuButton asChild className="h-11 [&[aria-current=page]]:bg-primary/10 [&[aria-current=page]]:text-foreground [&[aria-current=page]]:font-medium">
             <NavLink to={item.to} onClick={() => setOpenMobile(false)}><item.icon /><span>{item.title}</span></NavLink>
           </SidebarMenuButton>
         </SidebarMenuItem>)}

@@ -17,6 +17,9 @@ import 'reactflow/dist/style.css';
 import { serializeMindMap, downloadBlob, exportFilename } from '~/utils/knowledge/mindmapTransfer';
 import { renderMindMapSvg, rasterizeMindMap } from '~/utils/knowledge/mindmapImage';
 import { MindMap, MindMapNode as MindMapNodeType, MindMapConnection } from '~/types/knowledge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { Textarea } from "~/components/ui/textarea";
+import { Button } from "~/components/ui/button";
 import { TextNode } from './TextNode';
 import { EdgeCreationDialog } from './EdgeCreationDialog';
 import { MindMapToolbar } from './MindMapToolbar';
@@ -110,6 +113,7 @@ export function InnerMindMapEditor({
     }
   }, [edges, selectedEdge]);
 
+  const [backupPreview, setBackupPreview] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const graphSnapshot = () => ({
     ...mindmap,
@@ -129,7 +133,7 @@ export function InnerMindMapEditor({
     try {
       const snapshot = graphSnapshot();
       let blob: Blob;
-      if (format === 'json') blob = new Blob([serializeMindMap(snapshot)], { type: 'application/json;charset=utf-8' });
+      if (format === 'json') { setBackupPreview(serializeMindMap(snapshot)); return; }
       else {
         const image = renderMindMapSvg(snapshot);
         blob = format === 'svg' ? new Blob([image.svg], { type: 'image/svg+xml;charset=utf-8' }) : await rasterizeMindMap(image);
@@ -419,6 +423,15 @@ export function InnerMindMapEditor({
             />
         )}
 
+        <Dialog open={backupPreview !== null} onOpenChange={open => { if (!open) setBackupPreview(null); }}>
+          <DialogContent className="max-h-[90dvh] overflow-y-auto" aria-describedby="backup-export-description">
+            <DialogHeader><DialogTitle>Záloha mapy JSON</DialogTitle></DialogHeader>
+            <p id="backup-export-description" className="text-sm text-muted-foreground">Úplná kopie této mapy včetně rozpracovaných změn. Stáhněte soubor nebo vyberte a zkopírujte obsah. V přehledu jej obnovíte tlačítkem Importovat mapu.</p>
+            <label htmlFor="backup-export" className="text-sm font-medium">Obsah zálohy</label>
+            <Textarea id="backup-export" readOnly value={backupPreview ?? ""} rows={9} className="font-mono text-xs" />
+            <Button onClick={() => { if (backupPreview) downloadBlob(new Blob([backupPreview], { type: 'application/json;charset=utf-8' }), exportFilename(mindmap.title, 'json')); }}>Stáhnout JSON</Button>
+          </DialogContent>
+        </Dialog>
         <EdgeCreationDialog
             isOpen={isEdgeDialogOpen}
             onClose={() => { setIsEdgeDialogOpen(false); setPendingConnection(null); }}
