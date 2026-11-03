@@ -6,6 +6,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
   SheetFooter
 } from "~/components/ui/sheet";
 import { Button } from "~/components/ui/button";
@@ -19,7 +20,7 @@ import { NewMindMap } from "~/types/knowledge";
 interface CreateMindMapSidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: NewMindMap) => Promise<void>;
+  onSave: (data: NewMindMap) => Promise<boolean>;
   initialTag?: string;
   currentUser?: string;
   isLoading?: boolean;
@@ -79,19 +80,20 @@ export function MindMapCreationSidebar({
     }
   };
 
+  const [submitError, setSubmitError] = useState("");
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    if (!formData.title.trim()) return;
+    if (isSubmitting || !formData.title.trim()) return;
+    setSubmitError("");
 
     try {
-      await onSave(formData);
-
-      setTimeout(() => {
-        onClose();
-      }, 200);
+      const saved = await onSave({ ...formData, title: formData.title.trim() });
+      if (saved) onClose();
+      else setSubmitError("Mapu se nepodařilo uložit. Zadaný obsah zůstává ve formuláři.");
     } catch (error) {
       console.error("Chyba při vytváření myšlenkové mapy:", error);
+      setSubmitError("Mapu se nepodařilo uložit. Zkuste to prosím znovu.");
     }
   };
 
@@ -104,6 +106,7 @@ export function MindMapCreationSidebar({
               className="flex h-full flex-col"
               onSubmit={handleSubmit}
           >
+            {submitError && <p role="alert" className="py-3 text-sm text-destructive">{submitError}</p>}
             <SheetHeader>
               <div className="flex items-center justify-between">
                 <SheetTitle className="flex items-center gap-2">
@@ -111,6 +114,7 @@ export function MindMapCreationSidebar({
                   Nová myšlenková mapa
                 </SheetTitle>
               </div>
+              <SheetDescription>Zachyťte první myšlenku. Uzly a souvislosti přidáte v editoru; mapa se uloží do tohoto prohlížeče.</SheetDescription>
             </SheetHeader>
 
             <input type="hidden" name="author" value={formData.author} />

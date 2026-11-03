@@ -7,7 +7,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator
 } from "~/components/ui/breadcrumb";
-import {useLocation} from "@remix-run/react";
+import {useLocation, Link} from "@remix-run/react";
 import {Fragment, ReactNode} from "react";
 import {AppSidebar} from "~/components/layout/AppSidebar";
 import {Separator} from "~/components/ui/separator";
@@ -21,9 +21,10 @@ import {CommandSearch} from "~/features/search/CommandSearch";
 interface AppLayoutProps {
   children: ReactNode;
   projects: ProjectWithIssues[];
+  demo?: boolean;
 }
 
-const AppLayout = ({ children, projects }: AppLayoutProps) => {
+const AppLayout = ({ children, projects, demo }: AppLayoutProps) => {
   const location = useLocation();
   const allNavItems = [
     ...sidebarItems.navMain,
@@ -32,7 +33,8 @@ const AppLayout = ({ children, projects }: AppLayoutProps) => {
   const breadcrumbs = getBreadcrumbs(location.pathname, allNavItems);
 
   return (
-      <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
+      <div className="flex h-dvh w-full overflow-hidden bg-background text-foreground">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:rounded focus:bg-background focus:p-3">Přejít na obsah</a>
         <SidebarProvider>
           <AppSidebar projects={projects}/>
           <SidebarInset className="relative flex min-w-0 flex-1 flex-col">
@@ -64,8 +66,12 @@ const AppLayout = ({ children, projects }: AppLayoutProps) => {
                 </div>
               </div>
             </header>
-            <main className="flex-1 overflow-y-auto">
-              <div className="w-full p-6">
+            {demo && <aside className="shrink-0 border-b bg-primary/5 px-4 py-2 text-xs leading-relaxed text-muted-foreground sm:px-6" aria-label="O veřejné ukázce">
+              <strong className="text-foreground">Veřejná ukázka</strong> · Mapy ukládáte do tohoto prohlížeče. Dokumenty jsou k prohlížení; ostatní části ukazují prototyp rozhraní.
+              {" "}<Link to="/knowledge/mindmaps" className="font-medium text-primary underline underline-offset-2">Moje mapy</Link>
+            </aside>}
+            <main id="main-content" className="min-h-0 flex-1 overflow-y-auto">
+              <div className="mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8">
                 {children}
               </div>
             </main>

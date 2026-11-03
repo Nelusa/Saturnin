@@ -67,3 +67,14 @@ http   – Testing HTTP requests for IntelliJ Idea HTTP client.
 ## Documentation
 
 For detailed technical documentation, please see [DOCUMENTATION.md](DOCUMENTATION.md).
+
+## Průchod veřejnou ukázkou
+
+1. Úvod automaticky otevře přehled map. Karty zobrazují skutečné uzly a propojení.
+2. Zvolte **Nová myšlenková mapa**, pojmenujte ji a vytvořte. Při chybě úložiště zůstane formulář otevřený.
+3. V editoru přidejte další uzel, zapněte **Propojit** a spojte uzly pomocí jejich bodů. Vyberte uzel pro změnu názvu, barvy nebo tvaru.
+4. **Uložit** v toolbaru uloží graf. Název, popis a tagy upravíte samostatně tlačítkem **Upravit** nad mapou.
+5. Obnovte stránku a zkontrolujte obsah. Před opuštěním neuložené práce se zobrazí potvrzení.
+6. Export JSON/PNG/SVG v editoru slouží k uchování mimo prohlížeč. JSON export není záloha celé aplikace a zatím nemá import.
+
+Poškozené nebo neznámé uložené záznamy se při změně jiné mapy nemažou. Nečitelný formát úložiště blokuje zápis, místo aby se nahrazoval prázdným seznamem. Smazané ukázkové mapy se neobnovují. Uložení ze staršího otevřeného editoru nepřepíše mapu změněnou nebo smazanou v jiném okně. Veřejné sdílení v demu není implementováno; mapy jsou místní.

@@ -1,3 +1,4 @@
+import { initializeMindMaps } from "~/utils/knowledge/mindmapStorage";
 import { useState, useEffect } from "react";
 import { useLoaderData, useNavigate } from "@remix-run/react";
 import {ActionFunction, LoaderFunction, MetaFunction, redirect} from "@remix-run/node";
@@ -14,8 +15,8 @@ import {
 } from "lucide-react";
 import { MindMapCreationSidebar } from "~/features/knowledge/mindmaps/MindMapCreationSidebar";
 import {
-  createMindMap, saveMindMapToLocalStorage,
-  getMindMapsFromLocalStorage, getMindMapFromLocalStorage,
+  createMindMap,
+  getMindMapFromLocalStorage,
 } from "~/utils/knowledge/mindmapUtils";
 import { useToast } from "~/hooks/use-toast";
 import {useMindMapActions} from "~/hooks/useMindMapActions";
@@ -60,7 +61,7 @@ export default function KnowledgeMindMapsPage() {
   const { mindmaps: serverMaps } = useLoaderData<typeof loader>();
 
   const { toast } = useToast();
-  const [currentUser] = useState("Nela Letochová"); //TODO (NL): Získat aktuálního uživatele z API
+  const [currentUser] = useState("Moje mapy"); //TODO (NL): Získat aktuálního uživatele z API
   const [isCreatingMindMap, setIsCreatingMindMap] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [mindmaps, setMindmaps] = useState<MindMap[]>([]);
@@ -68,10 +69,7 @@ export default function KnowledgeMindMapsPage() {
   //TODO (NL): Zkusit zařídit, aby se MOCK_MINDMAPS uložily do localStorage a pak už se mazaly stejně, jako nově vytvořené mapy
   useEffect(() => {
     try {
-      if (localStorage.getItem('mindmaps') === null) {
-        serverMaps.forEach((map: MindMap) => saveMindMapToLocalStorage(map));
-      }
-      setMindmaps(getMindMapsFromLocalStorage().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
+      setMindmaps(initializeMindMaps(serverMaps).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
     } catch {
       setMindmaps(serverMaps);
       toast({ title: "Úložiště není dostupné", description: "Ukázkové mapy můžete prohlížet, ale změny nemusí jít uložit.", variant: "destructive" });
@@ -131,6 +129,7 @@ export default function KnowledgeMindMapsPage() {
         setIsCreatingMindMap(false);
 
         navigate(`/knowledge/mindmaps/${createdMindMap.id}`);
+        return true;
       } else {
         toast({
           title: "Chyba při vytváření mapy",
@@ -148,11 +147,12 @@ export default function KnowledgeMindMapsPage() {
     } finally {
       setIsLoading(false);
     }
+    return false;
   };
 
   return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-wrap justify-between items-start gap-4">
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <Brain className="h-5 w-5 text-primary" />
             Myšlenkové mapy
@@ -172,6 +172,11 @@ export default function KnowledgeMindMapsPage() {
           </Button>
         </div>
 
+        <section className="rounded-xl border bg-gradient-to-br from-primary/5 via-background to-background p-5 sm:p-6">
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary">Prostor pro souvislosti</p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Od myšlenky k propojenému celku.</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Otevřete ukázku nebo vytvořte vlastní mapu. Přidejte myšlenky, propojte je a uložte výsledek. Mapy zůstávají v tomto prohlížeči — k uchování mimo něj použijte export v editoru.</p>
+        </section>
         {isSearching && filteredMindmaps.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <SearchX className="h-12 w-12 text-muted-foreground/50 mb-4" />

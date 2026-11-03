@@ -61,10 +61,11 @@ export function MindMapToolbar({
             value={nodeName}
             onChange={(e) => onNodeNameChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            aria-label="Název nového uzlu"
             placeholder="Název uzlu..."
             className="w-48"
           />
-          <Button size="sm" onClick={onAddNode} disabled={!nodeName}>
+          <Button size="sm" onClick={onAddNode} disabled={!nodeName.trim()}>
             <Plus className="h-4 w-4 mr-1" />
             Přidat
           </Button>
@@ -86,6 +87,7 @@ export function MindMapToolbar({
         variant={isConnecting ? "secondary" : "outline"}
         onClick={onToggleConnect}
         disabled={!canConnect}
+        aria-pressed={isConnecting}
       >
         <Link2 className="h-4 w-4 mr-1" />
         Propojit
@@ -97,6 +99,8 @@ export function MindMapToolbar({
         <Save className="h-4 w-4 mr-1" />
         Uložit
       </Button>
+
+      <span role="status" className="text-xs text-muted-foreground">{hasUnsavedChanges ? "Neuložené změny" : "Bez neuložených změn"}</span>
 
       {onExport && (
         <DropdownMenu>

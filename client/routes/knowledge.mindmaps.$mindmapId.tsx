@@ -1,3 +1,4 @@
+import { hasStoredMindMaps } from "~/utils/knowledge/mindmapStorage";
 import { useUnsavedChanges } from "~/hooks/useUnsavedChanges";
 import { useState, useEffect, KeyboardEvent } from "react";
 import { useParams, useNavigate, useLoaderData, useLocation } from "@remix-run/react";
@@ -74,6 +75,9 @@ export default function MindmapDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [deleted, setDeleted] = useState(false);
+  useEffect(() => { if (deleted) navigate("/knowledge/mindmaps"); }, [deleted, navigate]);
+  const [notFound, setNotFound] = useState(false);
   const [mindmap, setMindmap] = useState<MindMap|null>(serverMap);
   const [isEditing, setIsEditing] = useState(false);
   const [editedMindmap, setEditedMindmap] = useState(mindmap);
@@ -87,13 +91,17 @@ export default function MindmapDetailPage() {
   useEffect(() => {
     if (mindmapId) {
       const local = getMindMapFromLocalStorage(mindmapId);
-      if (local) {
-        setMindmap(local);
-        return;
-      }
-      if (!serverMap) navigate("/404", { replace: true });
+      let initialized = false;
+      try { initialized = hasStoredMindMaps(); } catch { /* Read-only samples still work. */ }
+      const map = local ?? (initialized ? null : serverMap);
+      setMindmap(map);
+      setEditedMindmap(map);
+      setNotFound(!map);
+      setIsEditing(Boolean(location.state?.editing));
+      setGraphDirty(false);
+      setEditorKey(Date.now());
     }
-  }, [serverMap, mindmapId, navigate]);
+  }, [serverMap, mindmapId, navigate, location.state?.editing]);
 
   const {
     handleDeleteMindMap,
@@ -118,7 +126,13 @@ export default function MindmapDetailPage() {
   const [graphDirty, setGraphDirty] = useState(false);
   useUnsavedChanges(hasUnsavedChanges || graphDirty);
 
-  /*TODO (NL): Přidat loading spinner*/
+  if (notFound) return <div className="rounded-xl border p-8 space-y-3">
+    <h1 className="text-2xl font-semibold">Tato mapa tu není</h1>
+    <p className="text-muted-foreground">Možná byla smazána nebo je uložená v jiném prohlížeči.</p>
+    <Button onClick={() => navigate("/knowledge/mindmaps")}>Zpět na mapy</Button>
+  </div>;
+
+  /* Local maps are resolved after hydration. */
   if (mindmap === null || editedMindmap === null) {
     return (
         <div className="flex items-center justify-center h-64">
@@ -169,7 +183,7 @@ export default function MindmapDetailPage() {
   };
 
   const handleUpdateMap = (updatedMindmap: MindMap) => {
-    saveMindMapToLocalStorage(updatedMindmap);
+    saveMindMapToLocalStorage(updatedMindmap, mindmap.updatedAt);
     setMindmap(updatedMindmap);
     setEditedMindmap(updatedMindmap);
     setHasUnsavedChanges(false);
@@ -177,16 +191,18 @@ export default function MindmapDetailPage() {
 
   const handleDeleteMap = async () => {
     try {
-      await handleDeleteMindMap(editedMindmap.id);
-      navigate("/knowledge/mindmaps");
+      const removed = await handleDeleteMindMap(editedMindmap.id);
+      if (removed) { setGraphDirty(false); setHasUnsavedChanges(false); setDeleted(true); }
+      return removed;
     } catch (error) {
       console.error("Chyba při mazání myšlenkové mapy:", error);
+      return false;
     }
   };
 
   return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <Button
               variant="ghost"
               size="sm"
@@ -320,7 +336,7 @@ export default function MindmapDetailPage() {
                 </div>
 
                 <TabsContent value="editor" className="mt-4">
-                  <div className="rounded-lg border overflow-hidden" style={{ height: "500px" }}>
+                  <div className="rounded-lg border overflow-hidden" style={{ height: "clamp(480px, 65dvh, 800px)" }}>
                     <MindMapEditor
                         key={editorKey}
                         mindmap={editedMindmap}

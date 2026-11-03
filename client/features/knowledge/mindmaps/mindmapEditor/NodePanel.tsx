@@ -1,3 +1,4 @@
+import { nodeForeground } from "~/utils/knowledge/nodeAppearance";
 import { useCallback, useRef, useEffect, MouseEvent } from 'react';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
@@ -61,7 +62,7 @@ export function NodePanel({
                     className="px-2 py-1 bg-background border rounded-md text-xs"
                     style={{
                       backgroundColor: selectedNode.data.color || 'white',
-                      color: selectedNode.data.color ? 'white' : 'inherit'
+                      color: nodeForeground(selectedNode.data.color || '#ffffff')
                     }}
                 >
                   {selectedNode.data.label}

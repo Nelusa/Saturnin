@@ -1,3 +1,4 @@
+import { MindMapPreview } from "./MindMapPreview";
 import { MindMap } from "~/types/knowledge";
 import { MouseEvent, useState } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
@@ -20,7 +21,7 @@ import {cn, truncateText} from "~/utils/helpers";
 // TODO (NL): Přidat možnost řazení mindmap
 export function MindMapCard ({ mindmap, onDelete, onDuplicate, onShare }: {
   mindmap: MindMap,
-  onDelete: (id: string) => void,
+  onDelete: (id: string) => Promise<boolean> | void,
   onDuplicate: (id: string) => void,
   onShare: (id: string, isPublic: boolean) => void,
 }) {
@@ -34,7 +35,7 @@ export function MindMapCard ({ mindmap, onDelete, onDuplicate, onShare }: {
   };
 
   const handleConfirmDelete = async () => {
-    onDelete(mindmap.id);
+    return onDelete(mindmap.id);
   };
 
   const handleShare = (e: MouseEvent) => {
@@ -52,22 +53,14 @@ export function MindMapCard ({ mindmap, onDelete, onDuplicate, onShare }: {
   return (
       <>
         <Card className="overflow-hidden hover:shadow-md transition-shadow flex flex-col h-full">
-          <div
+          <Link
+              to={`/knowledge/mindmaps/${mindmap.id}`}
+              aria-label={`Otevřít mapu ${mindmap.title}`}
               className="aspect-video overflow-hidden flex items-center justify-center border-b flex-shrink-0"
               style={{ backgroundColor: `${mapColor}15` }}
           >
-            <div
-                className="flex items-center justify-center w-24 h-24 rounded-full"
-                style={{ backgroundColor: `${mapColor}30` }}
-            >
-              <div
-                  className="w-16 h-16 flex items-center justify-center rounded-full text-white"
-                  style={{ backgroundColor: mapColor }}
-              >
-                <Brain className="h-7 w-7" />
-              </div>
-            </div>
-          </div>
+            <MindMapPreview map={mindmap} />
+          </Link>
 
           <CardHeader className="p-4 pb-2 flex-shrink-0">
             <div className="flex justify-between items-start">
@@ -99,9 +92,9 @@ export function MindMapCard ({ mindmap, onDelete, onDuplicate, onShare }: {
                       <span>Upravit</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleShare}>
+                  <DropdownMenuItem disabled onClick={handleShare}>
                     <Share2 className="mr-2 h-4 w-4" />
-                    <span>Sdílet</span>
+                    <span>Sdílení není v demu dostupné</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleDuplicate}>
                     <Copy className="mr-2 h-4 w-4" />
@@ -154,7 +147,7 @@ export function MindMapCard ({ mindmap, onDelete, onDuplicate, onShare }: {
             <div className="flex justify-between w-full">
             <span className="flex items-center">
               <Brain className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-              {mindmap.nodeCount} {mindmap.nodeCount === 1 ? "uzel" : mindmap.nodeCount > 1 && mindmap.nodeCount < 5 ? "uzly" : "uzlů"}
+              {mindmap.nodes.length} {mindmap.nodes.length === 1 ? "uzel" : mindmap.nodes.length > 1 && mindmap.nodes.length < 5 ? "uzly" : "uzlů"}
             </span>
               <span>{mindmap.viewMode === "network" ? "Síť" : mindmap.viewMode === "tree" ? "Strom" : "Free"}</span>
             </div>

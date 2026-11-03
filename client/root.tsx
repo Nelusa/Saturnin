@@ -1,7 +1,7 @@
 import { isDemoMode, loadProjects } from "~/lib/demo.server";
 import type { ProjectWithIssues } from "~/types";
 import type { LinksFunction } from "@remix-run/node";
-import {Links, Meta, Outlet, Scripts, ScrollRestoration, useLoaderData, useLocation, Link, isRouteErrorResponse, useRouteError} from "@remix-run/react";
+import {Links, Meta, Outlet, Scripts, ScrollRestoration, useLoaderData, useLocation, isRouteErrorResponse, useRouteError} from "@remix-run/react";
 import "./styles/tailwind.css";
 import { createDragDropManager } from "dnd-core";
 import { DndProvider } from "react-dnd";
@@ -96,14 +96,14 @@ function AuthLayout() {
   );
 }
 
-function AppLayoutWrapper({ projects }: { projects: ProjectWithIssues[] }) {
+function AppLayoutWrapper({ projects, demo }: { projects: ProjectWithIssues[]; demo: boolean }) {
   return (
       <ThemeProvider>
         <DndProvider
             manager={manager}
             backend={HTML5Backend}
         >
-          <AppLayout projects={projects}>
+          <AppLayout projects={projects} demo={demo}>
             <Outlet />
           </AppLayout>
         </DndProvider>
@@ -123,15 +123,10 @@ export default function App() {
 
   return (
       <ClientOnly>
-        {demo && <aside className="border-b bg-muted px-4 py-3 text-sm" aria-label="O veřejné ukázce">
-          <strong>Saturnin · veřejná ukázka</strong> — Vlastní myšlenkové mapy ukládáte do tohoto prohlížeče.
-          Dokumenty jsou k prohlížení; úkoly, sdílení a nastavení ukazují prototyp rozhraní.
-          {" "}<Link className="underline" to="/knowledge/mindmaps">Vyzkoušet mapu</Link>
-        </aside>}
         {isAuthPage ? (
             <AuthLayout />
         ) : (
-            <AppLayoutWrapper projects={projects} />
+            <AppLayoutWrapper projects={projects} demo={demo} />
         )}
       </ClientOnly>
   );

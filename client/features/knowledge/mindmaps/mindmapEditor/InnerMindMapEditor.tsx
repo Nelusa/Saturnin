@@ -169,18 +169,18 @@ export function InnerMindMapEditor({
   };
 
   const onAddNode = useCallback(() => {
-    if (!nodeName || !reactFlowInstance) return;
+    if (!nodeName.trim() || !reactFlowInstance) return;
     const pos = reactFlowInstance.screenToFlowPosition({
       x: reactFlowWrapper.current!.getBoundingClientRect().left + reactFlowWrapper.current!.clientWidth / 2,
       y: reactFlowWrapper.current!.getBoundingClientRect().top + reactFlowWrapper.current!.clientHeight / 2
     });
     const color = NODE_COLORS[Math.floor(Math.random() * NODE_COLORS.length)];
     const newNode: Node<TextNodeData> = {
-      id: `node-${Date.now()}`,
+      id: `node-${crypto.randomUUID()}`,
       type: 'textNode',
       position: pos,
       data: {
-        label: nodeName,
+        label: nodeName.trim(),
         color,
         shape: 'rectangle'
       }
@@ -204,7 +204,7 @@ export function InnerMindMapEditor({
     setEdges(eds =>
         addEdge({
           ...pendingConnection,
-          id: `edge-${Date.now()}`,
+          id: `edge-${crypto.randomUUID()}`,
           label,
           markerEnd: { type: MarkerType.ArrowClosed },
           type: 'smoothstep',
@@ -267,8 +267,8 @@ export function InnerMindMapEditor({
     });
     setHasUnsavedChanges(false);
     toast({ title: "Mapa uložena", description: "Změny zůstanou v tomto prohlížeči." });
-    } catch {
-      toast({ title: "Mapu se nepodařilo uložit", description: "Změny jsou stále otevřené. Zkuste uvolnit úložiště nebo mapu exportovat.", variant: "destructive" });
+    } catch (error) {
+      toast({ title: "Mapu se nepodařilo uložit", description: error instanceof Error ? error.message : "Změny jsou stále otevřené. Zkuste mapu exportovat.", variant: "destructive" });
     }
   }, [nodes, edges, mindmap, onSave, toast]);
 
@@ -319,7 +319,7 @@ export function InnerMindMapEditor({
   const handleStartEditNodeName = useCallback(() => {
     if (!selectedNode) return;
     setIsEditingNodeName(true);
-  }, [selectedNode, setNodes, setEdges]);
+  }, [selectedNode]);
 
   const handleFinishEditNodeName = useCallback(() => {
     if (!selectedNode) return;
