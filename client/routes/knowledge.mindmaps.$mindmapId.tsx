@@ -170,7 +170,11 @@ export default function MindmapDetailPage() {
       const success = await handleUpdateMindMap(editedMindmap.id, editedMindmap);
 
       if (success) {
-        setMindmap(editedMindmap);
+        // Retain the persisted revision for the next optimistic-concurrency check.
+        const savedMap = getMindMapFromLocalStorage(editedMindmap.id);
+        if (!savedMap) throw new Error("Uloženou mapu se nepodařilo načíst.");
+        setMindmap(savedMap);
+        setEditedMindmap(savedMap);
         setIsEditing(false);
         setEditorKey(Date.now());
         setHasUnsavedChanges(false);
@@ -292,6 +296,7 @@ export default function MindmapDetailPage() {
           <CardHeader className="p-4 pb-0">
             {isEditing ? (
                 <Input
+                    aria-label="Název myšlenkové mapy"
                     value={editedMindmap.title}
                     onChange={(e) => setEditedMindmap({ ...editedMindmap, title: e.target.value })}
                     className="text-xl font-bold"
