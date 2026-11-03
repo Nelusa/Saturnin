@@ -16,7 +16,7 @@ interface DeleteConfirmationDialogProps {
   title: string;
   itemType?: string;
   description?: string;
-  onConfirm: () => Promise<void> | void;
+  onConfirm: () => Promise<boolean | void> | void;
   confirmText?: string;
   cancelText?: string;
 }
@@ -31,15 +31,20 @@ export function MindMapDeleteConfirmationDialog({
                                            confirmText = "Smazat",
                                            cancelText = "Zrušit"
                                          }: DeleteConfirmationDialogProps) {
+  const [error, setError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleConfirm = async () => {
     setIsDeleting(true);
     try {
-      await onConfirm();
+      setError("");
+      const removed = await onConfirm();
+      if (removed === false) setError("Mapu se nepodařilo smazat. Původní mapa zůstala zachována.");
+      else onOpenChange(false);
+    } catch {
+      setError("Mapu se nepodařilo smazat. Zkuste to prosím znovu.");
     } finally {
       setIsDeleting(false);
-      onOpenChange(false);
     }
   };
 
@@ -54,6 +59,7 @@ export function MindMapDeleteConfirmationDialog({
               {description || defaultDescription}
             </DialogDescription>
           </DialogHeader>
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button
                 variant="outline"

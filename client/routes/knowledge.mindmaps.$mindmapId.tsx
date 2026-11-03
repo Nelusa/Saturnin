@@ -1,3 +1,5 @@
+import { hasStoredMindMaps } from "~/utils/knowledge/mindmapStorage";
+import { useUnsavedChanges } from "~/hooks/useUnsavedChanges";
 import { useState, useEffect, KeyboardEvent } from "react";
 import { useParams, useNavigate, useLoaderData, useLocation } from "@remix-run/react";
 import {LoaderFunction, MetaFunction} from "@remix-run/node";
@@ -51,10 +53,6 @@ import {MindMap} from "~/types/knowledge";
 import {MindMapDeleteConfirmationDialog} from "~/features/knowledge/mindmaps/MindMapDeleteConfirmationDialog";
 import {MOCK_MINDMAPS} from "~/lib/data";
 
-type LoaderData = {
-  mindmap: MindMap | null;
-};
-
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   return [
     { title: `Mindmaps - ${data?.mindmap?.title || 'Myšlenková mapa'} | Saturnin` },
@@ -77,6 +75,9 @@ export default function MindmapDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [deleted, setDeleted] = useState(false);
+  useEffect(() => { if (deleted) navigate("/knowledge/mindmaps"); }, [deleted, navigate]);
+  const [notFound, setNotFound] = useState(false);
   const [mindmap, setMindmap] = useState<MindMap|null>(serverMap);
   const [isEditing, setIsEditing] = useState(false);
   const [editedMindmap, setEditedMindmap] = useState(mindmap);
@@ -88,15 +89,19 @@ export default function MindmapDetailPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   useEffect(() => {
-    if (!serverMap && mindmapId) {
+    if (mindmapId) {
       const local = getMindMapFromLocalStorage(mindmapId);
-      if (local) {
-        setMindmap(local);
-        return;
-      }
-      navigate("/404", { replace: true });
+      let initialized = false;
+      try { initialized = hasStoredMindMaps(); } catch { /* Read-only samples still work. */ }
+      const map = local ?? (initialized ? null : serverMap);
+      setMindmap(map);
+      setEditedMindmap(map);
+      setNotFound(!map);
+      setIsEditing(Boolean(location.state?.editing));
+      setGraphDirty(false);
+      setEditorKey(Date.now());
     }
-  }, [serverMap, mindmapId, navigate]);
+  }, [serverMap, mindmapId, navigate, location.state?.editing]);
 
   const {
     handleDeleteMindMap,
@@ -115,7 +120,19 @@ export default function MindmapDetailPage() {
     setEditedMindmap(mindmap);
   }, [mindmap]);
 
-  /*TODO (NL): Přidat loading spinner*/
+  useEffect(() => {
+    setHasUnsavedChanges(isEditing && JSON.stringify(editedMindmap) !== JSON.stringify(mindmap));
+  }, [isEditing, editedMindmap, mindmap]);
+  const [graphDirty, setGraphDirty] = useState(false);
+  useUnsavedChanges(hasUnsavedChanges || graphDirty);
+
+  if (notFound) return <div className="rounded-xl border p-8 space-y-3">
+    <h1 className="text-2xl font-semibold">Tato mapa tu není</h1>
+    <p className="text-muted-foreground">Možná byla smazána nebo je uložená v jiném prohlížeči.</p>
+    <Button onClick={() => navigate("/knowledge/mindmaps")}>Zpět na mapy</Button>
+  </div>;
+
+  /* Local maps are resolved after hydration. */
   if (mindmap === null || editedMindmap === null) {
     return (
         <div className="flex items-center justify-center h-64">
@@ -150,10 +167,14 @@ export default function MindmapDetailPage() {
   const handleSaveMap = async () => {
     setIsSaving(true);
     try {
-      saveMindMapToLocalStorage(editedMindmap);
       const success = await handleUpdateMindMap(editedMindmap.id, editedMindmap);
 
       if (success) {
+        // Retain the persisted revision for the next optimistic-concurrency check.
+        const savedMap = getMindMapFromLocalStorage(editedMindmap.id);
+        if (!savedMap) throw new Error("Uloženou mapu se nepodařilo načíst.");
+        setMindmap(savedMap);
+        setEditedMindmap(savedMap);
         setIsEditing(false);
         setEditorKey(Date.now());
         setHasUnsavedChanges(false);
@@ -165,27 +186,27 @@ export default function MindmapDetailPage() {
     }
   };
 
-  const handleUpdateMap = (updatedMindmap: Partial<MindMap>) => {
-    setEditedMindmap({
-      ...editedMindmap,
-      ...updatedMindmap,
-      updatedAt: new Date().toISOString()
-    });
-    setHasUnsavedChanges(true);
+  const handleUpdateMap = (updatedMindmap: MindMap) => {
+    saveMindMapToLocalStorage(updatedMindmap, mindmap.updatedAt);
+    setMindmap(updatedMindmap);
+    setEditedMindmap(updatedMindmap);
+    setHasUnsavedChanges(false);
   };
 
   const handleDeleteMap = async () => {
     try {
-      await handleDeleteMindMap(editedMindmap.id);
-      navigate("/knowledge/mindmaps");
+      const removed = await handleDeleteMindMap(editedMindmap.id);
+      if (removed) { setGraphDirty(false); setHasUnsavedChanges(false); setDeleted(true); }
+      return removed;
     } catch (error) {
       console.error("Chyba při mazání myšlenkové mapy:", error);
+      return false;
     }
   };
 
   return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <Button
               variant="ghost"
               size="sm"
@@ -201,7 +222,7 @@ export default function MindmapDetailPage() {
                 <>
                   <Button
                       variant="outline"
-                      onClick={() => setIsEditing(false)}
+                      onClick={() => { setEditedMindmap(mindmap); setHasUnsavedChanges(false); setIsEditing(false); }}
                       className="gap-1"
                       disabled={isSaving}
                   >
@@ -229,6 +250,8 @@ export default function MindmapDetailPage() {
                 <>
                   <Button
                       variant="outline"
+                      disabled={graphDirty}
+                      title={graphDirty ? "Nejprve uložte obsah mapy" : undefined}
                       onClick={() => setIsEditing(true)}
                       className="gap-1"
                   >
@@ -244,7 +267,7 @@ export default function MindmapDetailPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleShareMindMap(editedMindmap.id, editedMindmap.isPublic)}
+                      <DropdownMenuItem disabled onClick={() => handleShareMindMap(editedMindmap.id, editedMindmap.isPublic)}
                       >
                         <Share2 className="mr-2 h-4 w-4" />
                         <span>Sdílet</span>
@@ -273,12 +296,13 @@ export default function MindmapDetailPage() {
           <CardHeader className="p-4 pb-0">
             {isEditing ? (
                 <Input
+                    aria-label="Název myšlenkové mapy"
                     value={editedMindmap.title}
                     onChange={(e) => setEditedMindmap({ ...editedMindmap, title: e.target.value })}
                     className="text-xl font-bold"
                 />
             ) : (
-                <CardTitle className="text-xl font-bold flex items-center gap-2">
+                <CardTitle className="text-xl font-bold flex items-center gap-2 break-words [overflow-wrap:anywhere]">
                   <Brain className="h-5 w-5" style={{ color: editedMindmap?.color || "white" }} />
                   {editedMindmap.title}
                 </CardTitle>
@@ -289,8 +313,9 @@ export default function MindmapDetailPage() {
             <div className="flex flex-col gap-6">
               {isEditing ? (
                   <div className="mb-2">
-                    <label className="block text-sm font-medium mb-1">Popis</label>
+                    <label htmlFor="mindmap-description" className="block text-sm font-medium mb-1">Popis</label>
                     <Textarea
+                        id="mindmap-description"
                         value={editedMindmap.description}
                         onChange={(e) => setEditedMindmap({ ...editedMindmap, description: e.target.value })}
                         rows={2}
@@ -303,12 +328,12 @@ export default function MindmapDetailPage() {
 
               <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as "editor" | "info")}>
                 <div className="flex justify-between items-center">
-                  <TabsList>
-                    <TabsTrigger value="editor" className="flex items-center gap-1">
+                  <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:inline-flex sm:w-auto">
+                    <TabsTrigger value="editor" className="flex items-center gap-1 whitespace-normal text-left">
                       <Brain className="h-4 w-4" />
                       <span>Editor myšlenkové mapy</span>
                     </TabsTrigger>
-                    <TabsTrigger value="info" className="flex items-center gap-1">
+                    <TabsTrigger value="info" className="flex items-center gap-1 whitespace-normal text-left">
                       <Tag className="h-4 w-4" />
                       <span>Informace a tagy</span>
                     </TabsTrigger>
@@ -316,11 +341,12 @@ export default function MindmapDetailPage() {
                 </div>
 
                 <TabsContent value="editor" className="mt-4">
-                  <div className="rounded-lg border overflow-hidden" style={{ height: "500px" }}>
+                  <div className="rounded-lg border overflow-hidden" style={{ height: "clamp(480px, 65dvh, 800px)" }}>
                     <MindMapEditor
                         key={editorKey}
                         mindmap={editedMindmap}
                         onSave={handleUpdateMap}
+                        onDirtyChange={setGraphDirty}
                         readOnly={isEditing}
                     />
                   </div>
@@ -418,6 +444,7 @@ export default function MindmapDetailPage() {
                               <div className="flex items-center justify-between mb-2">
                                 <span className="text-sm font-medium">Veřejná mapa:</span>
                                 <Button
+                                    disabled
                                     variant={editedMindmap.isPublic ? "default" : "outline"}
                                     size="sm"
                                     className={cn(
@@ -435,8 +462,8 @@ export default function MindmapDetailPage() {
 
                               <div className="text-xs text-muted-foreground">
                                 {editedMindmap.isPublic
-                                    ? "Myšlenková mapa je viditelná pro všechny uživatele"
-                                    : "Myšlenková mapa je viditelná pouze pro vás"
+                                    ? "Ukázkové nastavení; demo mapy nezveřejňuje"
+                                    : "Mapa je uložena pouze v tomto prohlížeči"
                                 }
                               </div>
                             </div>
