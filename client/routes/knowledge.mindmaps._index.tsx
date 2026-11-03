@@ -179,8 +179,8 @@ export default function KnowledgeMindMapsPage() {
 
         <section className="rounded-xl border bg-gradient-to-br from-primary/5 via-background to-background p-5 sm:p-6">
           <p className="text-xs font-semibold uppercase tracking-widest text-primary">Prostor pro souvislosti</p>
-          <h1 className="mt-2 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Dobré nápady málokdy stojí samy.</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Otevřete ukázku nebo vytvořte vlastní mapu. Přidejte myšlenky, propojte je a uložte výsledek. Mapy zůstávají v tomto prohlížeči. Export JSON uchová i popis a tagy; importem je obnovíte jako novou mapu.</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Od myšlenky k propojenému celku.</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Otevřete ukázku nebo vytvořte vlastní mapu. Přidejte myšlenky, propojte je a uložte výsledek. Mapy zůstávají v tomto prohlížeči — k uchování mimo něj použijte export v editoru.</p>
         </section>
         {isSearching && filteredMindmaps.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">

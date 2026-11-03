@@ -80,6 +80,6 @@ For detailed technical documentation, please see [DOCUMENTATION.md](DOCUMENTATIO
 
 Import podporuje zálohy do 4 MB, 1 000 uzlů a 3 000 spojení. Kontroluje formát, verzi, jedinečnost ID, existenci koncových uzlů a mezní souřadnice. Starší JSON s pouhými React Flow `nodes`/`edges` není úplná záloha a není importován. Záloha jedné mapy neobsahuje ostatní mapy ani dokumenty.
 
-V demonstračním režimu hlavní navigace nabízí mapy a knihovnu. Ostatní původní obrazovky jsou oddělené pod **Další části prototypu**. Demo nepředstírá přihlášený účet ani tým.
+Rozložení, delší navigace, původní logo a stávající texty z PR #1 zůstávají zachované. PR #2 přidává funkce zálohy a importu, nikoli nový vizuální směr. Uživatelský a týmový panel v původní navigaci je součást prototypu; skutečná autentizace není implementovaná.
 
 Poškozené nebo neznámé uložené záznamy se při změně jiné mapy nemažou. Nečitelný formát úložiště blokuje zápis, místo aby se nahrazoval prázdným seznamem. Smazané ukázkové mapy se neobnovují. Uložení ze staršího otevřeného editoru nepřepíše mapu změněnou nebo smazanou v jiném okně. Veřejné sdílení v demu není implementováno; mapy jsou místní.
