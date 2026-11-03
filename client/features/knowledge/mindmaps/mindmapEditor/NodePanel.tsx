@@ -43,6 +43,7 @@ export function NodePanel({
           {editingNodeName ? (
               <div className="flex items-center gap-1">
                 <Input
+                    aria-label="Název vybraného uzlu"
                     value={newNodeName}
                     onChange={e => onNewNameChange(e.target.value)}
                     className="h-8 text-xs w-48"

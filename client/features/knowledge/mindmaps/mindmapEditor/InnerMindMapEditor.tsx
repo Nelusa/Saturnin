@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, MouseEvent } from 'react';
-import ReactFlow, {
+import FlowCanvas, {
   useNodesState,
   useEdgesState,
   addEdge,
@@ -14,8 +14,12 @@ import ReactFlow, {
   ReactFlowInstance
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { toPng, toSvg } from 'html-to-image';
+import { serializeMindMap, downloadBlob, exportFilename } from '~/utils/knowledge/mindmapTransfer';
+import { renderMindMapSvg, rasterizeMindMap } from '~/utils/knowledge/mindmapImage';
 import { MindMap, MindMapNode as MindMapNodeType, MindMapConnection } from '~/types/knowledge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { Textarea } from "~/components/ui/textarea";
+import { Button } from "~/components/ui/button";
 import { TextNode } from './TextNode';
 import { EdgeCreationDialog } from './EdgeCreationDialog';
 import { MindMapToolbar } from './MindMapToolbar';
@@ -109,63 +113,36 @@ export function InnerMindMapEditor({
     }
   }, [edges, selectedEdge]);
 
+  const [backupPreview, setBackupPreview] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const graphSnapshot = () => ({
+    ...mindmap,
+    nodes: nodes.map(n => ({ ...mindmap.nodes.find(previous => previous.id === n.id), id: n.id, text: n.data.label, x: n.position.x, y: n.position.y, color: n.data.color, shape: n.data.shape })),
+    connections: edges.map(e => ({
+      ...mindmap.connections.find(previous => previous.id === e.id),
+      id: e.id, sourceId: e.source, targetId: e.target, label: typeof e.label === 'string' ? e.label : '',
+      style: (e.style?.strokeDasharray === '5 5' ? 'dashed' : e.style?.strokeDasharray === '2 2' ? 'dotted' : 'solid') as 'solid' | 'dashed' | 'dotted',
+      color: e.style?.stroke?.toString() || '#555555', thickness: Number(e.style?.strokeWidth) || 1
+    })),
+    nodeCount: nodes.length,
+    isPublic: false
+  });
   const handleExport = async (format: 'png' | 'json' | 'svg') => {
-    if (!reactFlowWrapper.current || !reactFlowInstance) return;
-
+    if (isExporting) return;
+    setIsExporting(true);
     try {
-      if (format === 'json') {
-        const data = {
-          nodes: nodes,
-          edges: edges,
-        };
-        const jsonString = JSON.stringify(data, null, 2);
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${mindmap.title}.json`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      } else {
-        reactFlowInstance.fitView({ duration: 0, padding: 0.2 });
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        const exportFunction = format === 'png' ? toPng : toSvg;
-        const dataUrl = await exportFunction(reactFlowWrapper.current, {
-          backgroundColor: '#ffffff',
-          quality: 1,
-          width: reactFlowWrapper.current.offsetWidth,
-          height: reactFlowWrapper.current.offsetHeight,
-          style: {
-            width: '100%',
-            height: '100%'
-          },
-          filter: (node) => {
-            return !node.classList?.contains('react-flow__minimap');
-          }
-        });
-
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = `${mindmap.title}.${format}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      const snapshot = graphSnapshot();
+      let blob: Blob;
+      if (format === 'json') { setBackupPreview(serializeMindMap(snapshot)); return; }
+      else {
+        const image = renderMindMapSvg(snapshot);
+        blob = format === 'svg' ? new Blob([image.svg], { type: 'image/svg+xml;charset=utf-8' }) : await rasterizeMindMap(image);
       }
-      toast({
-        title: 'Export úspěšný',
-        description: `Mindmapa byla exportována ve formátu ${format.toUpperCase()}`,
-      });
-    } catch (error) {
-      console.error('Export failed:', error);
-      toast({
-        title: 'Export selhal',
-        description: 'Nepodařilo se exportovat mindmapu',
-        variant: 'destructive',
-      });
-    }
+      downloadBlob(blob, exportFilename(mindmap.title, format));
+      toast({ title: 'Export připraven', description: `Soubor ${format.toUpperCase()} byl předán prohlížeči ke stažení. Obsahuje i neuložené změny.` });
+    } catch (cause) {
+      toast({ title: 'Export se nepodařil', description: cause instanceof Error ? cause.message : 'Zkuste jiný formát.', variant: 'destructive' });
+    } finally { setIsExporting(false); }
   };
 
   const onAddNode = useCallback(() => {
@@ -234,43 +211,15 @@ export function InnerMindMapEditor({
     setHasUnsavedChanges(true);
   }, [setEdges]);
 
-  const handleSave = useCallback(() => {
-    const mmNodes: MindMapNodeType[] = nodes.map(n => ({
-      id: n.id,
-      text: n.data.label,
-      x: n.position.x,
-      y: n.position.y,
-      color: n.data.color,
-      shape: n.data.shape
-    }));
-    const mmConns: MindMapConnection[] = edges.map(e => {
-      let s: 'solid' | 'dashed' | 'dotted' = 'solid';
-      if (e.style?.strokeDasharray === '5 5') s = 'dashed';
-      else if (e.style?.strokeDasharray === '2 2') s = 'dotted';
-      return {
-        id: e.id,
-        sourceId: e.source,
-        targetId: e.target,
-        label: (e.label as string) || '',
-        style: s,
-        color: e.style?.stroke?.toString() || '#555',
-        thickness: Number(e.style?.strokeWidth) || 1
-      };
-    });
+  const handleSave = () => {
     try {
-    onSave({
-      ...mindmap,
-      nodes: mmNodes,
-      connections: mmConns,
-      nodeCount: mmNodes.length,
-      updatedAt: new Date().toISOString()
-    });
+    onSave({ ...graphSnapshot(), updatedAt: new Date().toISOString() });
     setHasUnsavedChanges(false);
     toast({ title: "Mapa uložena", description: "Změny zůstanou v tomto prohlížeči." });
     } catch (error) {
       toast({ title: "Mapu se nepodařilo uložit", description: error instanceof Error ? error.message : "Změny jsou stále otevřené. Zkuste mapu exportovat.", variant: "destructive" });
     }
-  }, [nodes, edges, mindmap, onSave, toast]);
+  };
 
   const handleNodeClick = useCallback((_: MouseEvent, node: Node) => {
     if (readOnly) return;
@@ -288,6 +237,13 @@ export function InnerMindMapEditor({
     setSelectedEdge(null);
     setNewNodeName(node.data.label);
   }, [readOnly, selectedNode?.id]);
+
+  useEffect(() => {
+    if (selectedNode) {
+      const current = nodes.find(node => node.id === selectedNode.id);
+      if (current !== selectedNode) setSelectedNode(current ?? null);
+    }
+  }, [nodes, selectedNode]);
 
   const handleEdgeClick = useCallback((e: MouseEvent, edge: Edge) => {
     if (readOnly) return;
@@ -382,10 +338,11 @@ export function InnerMindMapEditor({
         hasUnsavedChanges={hasUnsavedChanges}
         onSave={handleSave}
         onExport={handleExport}
+        isExporting={isExporting}
       />}
 
       <div ref={reactFlowWrapper} className="flex-1 relative">
-        <ReactFlow
+        <FlowCanvas
           nodes={nodes}
           edges={edges}
           onNodesChange={changes => { onNodesChange(changes); if (changes.some(change => change.type !== "select" && change.type !== "dimensions")) setHasUnsavedChanges(true); }}
@@ -424,7 +381,7 @@ export function InnerMindMapEditor({
               Klikni na zdrojový uzel a poté na cílový uzel pro vytvoření spojení
             </Panel>
           )}
-        </ReactFlow>
+        </FlowCanvas>
       </div>
 
       {selectedNode && !readOnly && (
@@ -466,6 +423,15 @@ export function InnerMindMapEditor({
             />
         )}
 
+        <Dialog open={backupPreview !== null} onOpenChange={open => { if (!open) setBackupPreview(null); }}>
+          <DialogContent className="max-h-[90dvh] overflow-y-auto" aria-describedby="backup-export-description">
+            <DialogHeader><DialogTitle>Záloha mapy JSON</DialogTitle></DialogHeader>
+            <p id="backup-export-description" className="text-sm text-muted-foreground">Úplná kopie této mapy včetně rozpracovaných změn. Stáhněte soubor nebo vyberte a zkopírujte obsah. V přehledu jej obnovíte tlačítkem Importovat mapu.</p>
+            <label htmlFor="backup-export" className="text-sm font-medium">Obsah zálohy</label>
+            <Textarea id="backup-export" readOnly value={backupPreview ?? ""} rows={9} className="font-mono text-xs" />
+            <Button onClick={() => { if (backupPreview) downloadBlob(new Blob([backupPreview], { type: 'application/json;charset=utf-8' }), exportFilename(mindmap.title, 'json')); }}>Stáhnout JSON</Button>
+          </DialogContent>
+        </Dialog>
         <EdgeCreationDialog
             isOpen={isEdgeDialogOpen}
             onClose={() => { setIsEdgeDialogOpen(false); setPendingConnection(null); }}

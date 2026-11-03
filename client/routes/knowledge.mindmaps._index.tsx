@@ -1,3 +1,4 @@
+import { MindMapImportDialog } from "~/features/knowledge/mindmaps/MindMapImportDialog";
 import { initializeMindMaps } from "~/utils/knowledge/mindmapStorage";
 import { useState, useEffect } from "react";
 import { useLoaderData, useNavigate } from "@remix-run/react";
@@ -12,6 +13,7 @@ import {
   Brain,
   Plus,
   SearchX,
+  Upload,
 } from "lucide-react";
 import { MindMapCreationSidebar } from "~/features/knowledge/mindmaps/MindMapCreationSidebar";
 import {
@@ -63,6 +65,7 @@ export default function KnowledgeMindMapsPage() {
   const { toast } = useToast();
   const [currentUser] = useState("Moje mapy"); //TODO (NL): Získat aktuálního uživatele z API
   const [isCreatingMindMap, setIsCreatingMindMap] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [mindmaps, setMindmaps] = useState<MindMap[]>([]);
 
@@ -163,18 +166,20 @@ export default function KnowledgeMindMapsPage() {
             )}
           </h2>
 
+          <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="mr-2 size-4" />Importovat mapu</Button>
           <Button
               className="flex items-center gap-1"
               onClick={() => setIsCreatingMindMap(true)}
           >
             <Plus className="h-4 w-4" />
             <span>Nová myšlenková mapa</span>
-          </Button>
+          </Button></div>
         </div>
 
         <section className="rounded-xl border bg-gradient-to-br from-primary/5 via-background to-background p-5 sm:p-6">
           <p className="text-xs font-semibold uppercase tracking-widest text-primary">Prostor pro souvislosti</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Od myšlenky k propojenému celku.</h1>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Od myšlenky k propojenému celku.</h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Otevřete ukázku nebo vytvořte vlastní mapu. Přidejte myšlenky, propojte je a uložte výsledek. Mapy zůstávají v tomto prohlížeči — k uchování mimo něj použijte export v editoru.</p>
         </section>
         {isSearching && filteredMindmaps.length === 0 ? (
@@ -205,6 +210,7 @@ export default function KnowledgeMindMapsPage() {
             </div>
         )}
 
+        <MindMapImportDialog open={importOpen} onOpenChange={setImportOpen} onImported={map => { setMindmaps(previous => [map, ...previous]); navigate(`/knowledge/mindmaps/${map.id}`); }} />
         <MindMapCreationSidebar
             isOpen={isCreatingMindMap}
             onClose={() => setIsCreatingMindMap(false)}

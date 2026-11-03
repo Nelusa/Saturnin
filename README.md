@@ -75,6 +75,11 @@ For detailed technical documentation, please see [DOCUMENTATION.md](DOCUMENTATIO
 3. V editoru přidejte další uzel, zapněte **Propojit** a spojte uzly pomocí jejich bodů. Vyberte uzel pro změnu názvu, barvy nebo tvaru.
 4. **Uložit** v toolbaru uloží graf. Název, popis a tagy upravíte samostatně tlačítkem **Upravit** nad mapou.
 5. Obnovte stránku a zkontrolujte obsah. Před opuštěním neuložené práce se zobrazí potvrzení.
-6. Export JSON/PNG/SVG v editoru slouží k uchování mimo prohlížeč. JSON export není záloha celé aplikace a zatím nemá import.
+6. **Exportovat jako JSON** vytvoří přenositelnou zálohu jedné mapy (formát `saturnin-mindmap`, verze 1) včetně metadat a rozpracovaného grafu. V přehledu zvolte **Importovat mapu**, vyberte JSON soubor nebo vložte jeho obsah. Import vždy vytvoří novou soukromou kopii a nepřepíše existující mapy. Při chybě zůstane obsah otevřený.
+7. **PNG/SVG** vytvoří samostatný obrázek celého grafu na světlém pozadí, bez ovládacích prvků, nezávisle na přiblížení editoru. SVG zůstává vektorové, PNG je omezené na 4 096 px na delší straně a 16 megapixelů.
+
+Import podporuje zálohy do 4 MB, 1 000 uzlů a 3 000 spojení. Kontroluje formát, verzi, jedinečnost ID, existenci koncových uzlů a mezní souřadnice. Starší JSON s pouhými React Flow `nodes`/`edges` není úplná záloha a není importován. Záloha jedné mapy neobsahuje ostatní mapy ani dokumenty.
+
+Rozložení, delší navigace, původní logo a stávající texty z PR #1 zůstávají zachované. PR #2 přidává funkce zálohy a importu, nikoli nový vizuální směr. Uživatelský a týmový panel v původní navigaci je součást prototypu; skutečná autentizace není implementovaná.
 
 Poškozené nebo neznámé uložené záznamy se při změně jiné mapy nemažou. Nečitelný formát úložiště blokuje zápis, místo aby se nahrazoval prázdným seznamem. Smazané ukázkové mapy se neobnovují. Uložení ze staršího otevřeného editoru nepřepíše mapu změněnou nebo smazanou v jiném okně. Veřejné sdílení v demu není implementováno; mapy jsou místní.

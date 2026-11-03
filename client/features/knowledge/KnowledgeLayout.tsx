@@ -92,6 +92,7 @@ export function KnowledgeLayout() {
                 <div className="relative w-full md:w-64">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
+                      aria-label="Hledat znalosti"
                       placeholder="Hledat znalosti..."
                       className="pl-8 pr-8"
                       value={searchTerm}
