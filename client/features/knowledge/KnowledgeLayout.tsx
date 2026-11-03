@@ -79,7 +79,6 @@ export function KnowledgeLayout() {
   if (demo && (activeTab === "mindmaps" || activeTab === "library")) return (
     <SearchContext.Provider value={searchContextValue}>
       <div className="min-w-0 space-y-6">
-        {activeTab === "library" && <header><p className="text-xs font-semibold uppercase tracking-widest text-primary">Znalosti v souvislostech</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Knihovna dokumentů</h1><p className="mt-2 text-sm text-muted-foreground">Ukázkové dokumenty k prohlížení. Úpravy a synchronizace nejsou součástí veřejného dema.</p></header>}
         {(location.pathname === "/knowledge/mindmaps" || location.pathname === "/knowledge/library") && <div className="relative max-w-md"><Search className="absolute left-3 top-3 size-4 text-muted-foreground" /><Input aria-label={activeTab === "mindmaps" ? "Hledat mapy" : "Hledat dokumenty"} placeholder={activeTab === "mindmaps" ? "Hledat v názvech, popisech a tazích…" : "Hledat dokumenty…"} value={searchTerm} onChange={event => setSearchTerm(event.target.value)} className="pl-9 pr-10" />{isSearching && <Button variant="ghost" size="icon" aria-label="Vymazat hledání" className="absolute right-0 top-0" onClick={clearSearch}><X className="size-4" /></Button>}</div>}
         <Outlet />
       </div>
