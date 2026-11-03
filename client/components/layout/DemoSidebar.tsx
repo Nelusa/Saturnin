@@ -1,5 +1,6 @@
+import { Logo } from "~/components/layout/Logo";
 import { NavLink } from "@remix-run/react";
-import { Brain, BookOpen, Orbit, HardDrive, ArrowUpRight } from "lucide-react";
+import { Brain, BookOpen, HardDrive, ArrowUpRight } from "lucide-react";
 import { Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, useSidebar } from "~/components/ui/sidebar";
 
 export function DemoSidebar() {
@@ -7,7 +8,7 @@ export function DemoSidebar() {
   return <Sidebar collapsible="offcanvas">
     <SidebarHeader className="p-5">
       <NavLink to="/knowledge/mindmaps" onClick={() => setOpenMobile(false)} className="flex items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-        <span className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Orbit className="size-6" /></span>
+        <span className="flex size-10 shrink-0 items-center justify-center"><Logo /></span>
         <span><span className="block text-lg font-semibold tracking-tight">Saturnin</span><span className="block text-xs text-muted-foreground">Místo pro propojené myšlení</span></span>
       </NavLink>
     </SidebarHeader>
