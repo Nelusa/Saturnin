@@ -75,15 +75,6 @@ export async function updateMindMap(id: string, data: Partial<MindMap>): Promise
 
     saveMindMapToLocalStorage(updatedMap);
 
-    const mockIndex = MOCK_MINDMAPS.findIndex(m => m.id === id);
-    if (mockIndex >= 0) {
-      MOCK_MINDMAPS[mockIndex] = {
-        ...MOCK_MINDMAPS[mockIndex],
-        ...data,
-        updatedAt: new Date().toISOString()
-      };
-    }
-
     return true;
   } catch (error) {
     console.error(`Chyba při aktualizaci myšlenkové mapy ${id}:`, error);
@@ -98,16 +89,8 @@ export async function updateMindMap(id: string, data: Partial<MindMap>): Promise
  */
 export async function deleteMindMap(id: string): Promise<boolean> {
   try {
-    const removed = removeMindMapFromLocalStorage(id);
+    return removeMindMapFromLocalStorage(id);
 
-    const mockIndex = MOCK_MINDMAPS.findIndex(m => m.id === id);
-    if (mockIndex >= 0) {
-      MOCK_MINDMAPS.splice(mockIndex, 1);
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    return true;
   } catch (error) {
     console.error(`Chyba při mazání myšlenkové mapy ${id}:`, error);
     return false;
@@ -184,32 +167,9 @@ export function generateMindMapThumbnail(mindmap: Partial<MindMap>): string {
  * @returns Promise with boolean indicating success
  */
 export async function shareMindMap(id: string, isPublic: boolean): Promise<boolean> {
-  try {
-    const map = getMindMapFromLocalStorage(id);
+  void id; void isPublic;
+  return false; // Public sharing requires authenticated server storage.
 
-    if (map) {
-      map.isPublic = !isPublic;
-      map.updatedAt = new Date().toISOString();
-
-      saveMindMapToLocalStorage(map);
-
-      const mockIndex = MOCK_MINDMAPS.findIndex(m => m.id === id);
-      if (mockIndex >= 0) {
-        MOCK_MINDMAPS[mockIndex] = {
-          ...MOCK_MINDMAPS[mockIndex],
-          isPublic: !isPublic,
-          updatedAt: new Date().toISOString()
-        };
-      }
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    return true;
-  } catch (error) {
-    console.error(`Chyba při sdílení myšlenkové mapy ${id}:`, error);
-    return false;
-  }
 }
 
 /**
@@ -244,13 +204,10 @@ export function saveMindMapToLocalStorage(mindmap: MindMap): void {
     }
 
     localStorage.setItem('mindmaps', JSON.stringify(storedMaps));
-    sessionStorage.setItem('mindmaps', JSON.stringify(storedMaps));
+    try { sessionStorage.setItem('mindmaps', JSON.stringify(storedMaps)); } catch { /* localStorage is authoritative */ }
 
-    if (typeof window !== 'undefined') {
-      (window as any).__MINDMAPS_DATA = storedMaps;
-    }
   } catch (error) {
-    console.error('Chyba při ukládání mapy do localStorage:', error);
+    throw new Error('Mapu se nepodařilo uložit. Změny ponechte otevřené a zkuste uvolnit úložiště prohlížeče.', { cause: error });
   }
 }
 
@@ -260,65 +217,16 @@ export function saveMindMapToLocalStorage(mindmap: MindMap): void {
  */
 export function getMindMapsFromLocalStorage(): MindMap[] {
   try {
-    let maps: MindMap[] = [];
-    let source = "none";
-
-    const localStorageData = localStorage.getItem('mindmaps');
-    if (localStorageData) {
-      try {
-        const parsed = JSON.parse(localStorageData);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          maps = parsed;
-          source = "localStorage";}
-      } catch (e) {
-        console.error("Chyba při parsování localStorage:", e);
-      }
-    }
-
-    if (maps.length === 0) {
-      const sessionData = sessionStorage.getItem('mindmaps');
-      if (sessionData) {
-        try {
-          const parsed = JSON.parse(sessionData);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            maps = parsed;
-            source = "sessionStorage";
-
-            localStorage.setItem('mindmaps', sessionData);
-          }
-        } catch (e) {
-          console.error("Chyba při parsování sessionStorage:", e);
-        }
-      }
-    }
-
-    if (maps.length > 0) {
-      const mapsJson = JSON.stringify(maps);
-
-      if (source !== "localStorage") {
-        localStorage.setItem('mindmaps', mapsJson);
-      }
-
-      if (source !== "sessionStorage") {
-        sessionStorage.setItem('mindmaps', mapsJson);
-      }
-
-      if (typeof window !== 'undefined') {
-        (window as any).__MINDMAPS_DATA = maps;
-      }
-    } else {
-      localStorage.removeItem('mindmaps');
-      sessionStorage.removeItem('mindmaps');
-      if (typeof window !== 'undefined') {
-        (window as any).__MINDMAPS_DATA = [];
-      }
-    }
-
-    return maps;
-  } catch (error) {
-    console.error('Chyba při načítání map z úložišť:', error);
-    return [];
-  }
+    const parsed: unknown = JSON.parse(localStorage.getItem('mindmaps') ?? '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((map): map is MindMap => Boolean(map) && typeof map.id === 'string' &&
+      typeof map.title === 'string' && typeof map.description === 'string' &&
+      Array.isArray(map.tags) && map.tags.every((tag: unknown) => typeof tag === 'string') &&
+      Array.isArray(map.nodes) && map.nodes.every((node: MindMap['nodes'][number]) => Boolean(node) &&
+        typeof node.id === 'string' && typeof node.text === 'string' && Number.isFinite(node.x) && Number.isFinite(node.y)) &&
+      Array.isArray(map.connections) && map.connections.every((edge: MindMap['connections'][number]) => Boolean(edge) &&
+        typeof edge.id === 'string' && typeof edge.sourceId === 'string' && typeof edge.targetId === 'string'));
+  } catch { return []; }
 }
 
 export function getMindMapFromLocalStorage(id: string): MindMap | null {
@@ -344,9 +252,6 @@ export function removeMindMapFromLocalStorage(id: string): boolean {
       localStorage.setItem('mindmaps', JSON.stringify(filteredMaps));
       sessionStorage.setItem('mindmaps', JSON.stringify(filteredMaps));
 
-      if (typeof window !== 'undefined') {
-        (window as any).__MINDMAPS_DATA = filteredMaps;
-      }
 
       return true;
     } else {

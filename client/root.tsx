@@ -1,5 +1,7 @@
+import { isDemoMode, loadProjects } from "~/lib/demo.server";
+import type { ProjectWithIssues } from "~/types";
 import type { LinksFunction } from "@remix-run/node";
-import {Links, Meta, Outlet, Scripts, ScrollRestoration, useLoaderData, useLocation} from "@remix-run/react";
+import {Links, Meta, Outlet, Scripts, ScrollRestoration, useLoaderData, useLocation, Link, isRouteErrorResponse, useRouteError} from "@remix-run/react";
 import "./styles/tailwind.css";
 import { createDragDropManager } from "dnd-core";
 import { DndProvider } from "react-dnd";
@@ -40,17 +42,7 @@ const ClientOnly = ({ children }: { children: ReactNode }) => {
 
 // TODO (NL): Implementovat správné načítání projektů s paginací pro velké množství dat
 export const loader = async () => {
-  const resp = await fetch("http://localhost:8080/api/project");
-  const projects = await resp.json();
-  for await (const project of projects) {
-    const issueResp = await fetch(`http://localhost:8080/api/project/${project.code}/issue`);
-    project.issues = await issueResp.json();
-  }
-  return new Response(JSON.stringify({ projects }), {
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+  return { projects: await loadProjects(), demo: isDemoMode() };
 };
 
 const themeScript = `
@@ -104,7 +96,7 @@ function AuthLayout() {
   );
 }
 
-function AppLayoutWrapper({ projects }: { projects: any[] }) {
+function AppLayoutWrapper({ projects }: { projects: ProjectWithIssues[] }) {
   return (
       <ThemeProvider>
         <DndProvider
@@ -121,24 +113,36 @@ function AppLayoutWrapper({ projects }: { projects: any[] }) {
 
 // TODO (NL): Přidat error boundary pro lepší zachycení chyb
 export default function App() {
-  const { projects } = useLoaderData<typeof loader>();
+  const { projects, demo } = useLoaderData<typeof loader>();
   const location = useLocation();
 
   const isAuthPage = location.pathname === "/login" ||
       location.pathname === "/signup" ||
       location.pathname === "/reset-password";
 
-  // TODO (NL): Upravit, až bude implementováno přihlašování
-  const searchParams = new URLSearchParams(location.search);
-  const isSimulatedLoggedIn = searchParams.get("simulateAuth") === "true";
 
   return (
       <ClientOnly>
-        {isAuthPage && !isSimulatedLoggedIn ? (
+        {demo && <aside className="border-b bg-muted px-4 py-3 text-sm" aria-label="O veřejné ukázce">
+          <strong>Saturnin · veřejná ukázka</strong> — Vlastní myšlenkové mapy ukládáte do tohoto prohlížeče.
+          Dokumenty jsou k prohlížení; úkoly, sdílení a nastavení ukazují prototyp rozhraní.
+          {" "}<Link className="underline" to="/knowledge/mindmaps">Vyzkoušet mapu</Link>
+        </aside>}
+        {isAuthPage ? (
             <AuthLayout />
         ) : (
             <AppLayoutWrapper projects={projects} />
         )}
       </ClientOnly>
   );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const status = isRouteErrorResponse(error) ? error.status : 500;
+  return <main className="mx-auto max-w-xl p-8 space-y-4">
+    <h1 className="text-2xl font-semibold">{status === 404 ? "Stránka nebyla nalezena" : "Tuto část se nepodařilo načíst"}</h1>
+    <p>Vaše uložené myšlenkové mapy zůstávají v tomto prohlížeči. Zkuste se vrátit do ukázky.</p>
+    <a className="underline" href="/knowledge/mindmaps">Otevřít myšlenkové mapy</a>
+  </main>;
 }

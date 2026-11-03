@@ -108,3 +108,26 @@ describe('mindmapUtils', () => {
     expect(getMindMapsFromLocalStorage().length).toBe(0);
   });
 });
+
+describe('persistent map failure handling', () => {
+  const map = { id: 'regression', title: 'Saved title', description: '', tags: [], thumbnail: '', createdAt: '', updatedAt: '', author: '', nodeCount: 0, nodes: [], connections: [], color: '#fff', isPublic: false, viewMode: 'network' as const };
+  it('does not report success when durable storage rejects a write', () => {
+    const spy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('quota'); });
+    try { expect(() => saveMindMapToLocalStorage(map)).toThrow('Mapu se nepodařilo uložit'); }
+    finally { spy.mockRestore(); }
+  });
+  it('does not treat an optional session mirror failure as failure of a durable save', () => {
+    localStorage.clear();
+    const spy = vi.spyOn(sessionStorage, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
+    try {
+      saveMindMapToLocalStorage(map);
+      expect(getMindMapsFromLocalStorage()[0].title).toBe('Saved title');
+    } finally { spy.mockRestore(); }
+  });
+  it('ignores malformed records without deleting the stored payload', () => {
+    const raw = JSON.stringify([null, { id: 'bad', nodes: [null] }, map]);
+    localStorage.setItem('mindmaps', raw);
+    expect(getMindMapsFromLocalStorage()).toEqual([map]);
+    expect(localStorage.getItem('mindmaps')).toBe(raw);
+  });
+});

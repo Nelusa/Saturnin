@@ -1,3 +1,4 @@
+import { useUnsavedChanges } from "~/hooks/useUnsavedChanges";
 import { useState, useEffect, KeyboardEvent } from "react";
 import { useParams, useNavigate, useLoaderData, useLocation } from "@remix-run/react";
 import {LoaderFunction, MetaFunction} from "@remix-run/node";
@@ -51,10 +52,6 @@ import {MindMap} from "~/types/knowledge";
 import {MindMapDeleteConfirmationDialog} from "~/features/knowledge/mindmaps/MindMapDeleteConfirmationDialog";
 import {MOCK_MINDMAPS} from "~/lib/data";
 
-type LoaderData = {
-  mindmap: MindMap | null;
-};
-
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   return [
     { title: `Mindmaps - ${data?.mindmap?.title || 'Myšlenková mapa'} | Saturnin` },
@@ -88,13 +85,13 @@ export default function MindmapDetailPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   useEffect(() => {
-    if (!serverMap && mindmapId) {
+    if (mindmapId) {
       const local = getMindMapFromLocalStorage(mindmapId);
       if (local) {
         setMindmap(local);
         return;
       }
-      navigate("/404", { replace: true });
+      if (!serverMap) navigate("/404", { replace: true });
     }
   }, [serverMap, mindmapId, navigate]);
 
@@ -114,6 +111,12 @@ export default function MindmapDetailPage() {
   useEffect(() => {
     setEditedMindmap(mindmap);
   }, [mindmap]);
+
+  useEffect(() => {
+    setHasUnsavedChanges(isEditing && JSON.stringify(editedMindmap) !== JSON.stringify(mindmap));
+  }, [isEditing, editedMindmap, mindmap]);
+  const [graphDirty, setGraphDirty] = useState(false);
+  useUnsavedChanges(hasUnsavedChanges || graphDirty);
 
   /*TODO (NL): Přidat loading spinner*/
   if (mindmap === null || editedMindmap === null) {
@@ -150,10 +153,10 @@ export default function MindmapDetailPage() {
   const handleSaveMap = async () => {
     setIsSaving(true);
     try {
-      saveMindMapToLocalStorage(editedMindmap);
       const success = await handleUpdateMindMap(editedMindmap.id, editedMindmap);
 
       if (success) {
+        setMindmap(editedMindmap);
         setIsEditing(false);
         setEditorKey(Date.now());
         setHasUnsavedChanges(false);
@@ -165,13 +168,11 @@ export default function MindmapDetailPage() {
     }
   };
 
-  const handleUpdateMap = (updatedMindmap: Partial<MindMap>) => {
-    setEditedMindmap({
-      ...editedMindmap,
-      ...updatedMindmap,
-      updatedAt: new Date().toISOString()
-    });
-    setHasUnsavedChanges(true);
+  const handleUpdateMap = (updatedMindmap: MindMap) => {
+    saveMindMapToLocalStorage(updatedMindmap);
+    setMindmap(updatedMindmap);
+    setEditedMindmap(updatedMindmap);
+    setHasUnsavedChanges(false);
   };
 
   const handleDeleteMap = async () => {
@@ -201,7 +202,7 @@ export default function MindmapDetailPage() {
                 <>
                   <Button
                       variant="outline"
-                      onClick={() => setIsEditing(false)}
+                      onClick={() => { setEditedMindmap(mindmap); setHasUnsavedChanges(false); setIsEditing(false); }}
                       className="gap-1"
                       disabled={isSaving}
                   >
@@ -229,6 +230,8 @@ export default function MindmapDetailPage() {
                 <>
                   <Button
                       variant="outline"
+                      disabled={graphDirty}
+                      title={graphDirty ? "Nejprve uložte obsah mapy" : undefined}
                       onClick={() => setIsEditing(true)}
                       className="gap-1"
                   >
@@ -244,7 +247,7 @@ export default function MindmapDetailPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleShareMindMap(editedMindmap.id, editedMindmap.isPublic)}
+                      <DropdownMenuItem disabled onClick={() => handleShareMindMap(editedMindmap.id, editedMindmap.isPublic)}
                       >
                         <Share2 className="mr-2 h-4 w-4" />
                         <span>Sdílet</span>
@@ -289,8 +292,9 @@ export default function MindmapDetailPage() {
             <div className="flex flex-col gap-6">
               {isEditing ? (
                   <div className="mb-2">
-                    <label className="block text-sm font-medium mb-1">Popis</label>
+                    <label htmlFor="mindmap-description" className="block text-sm font-medium mb-1">Popis</label>
                     <Textarea
+                        id="mindmap-description"
                         value={editedMindmap.description}
                         onChange={(e) => setEditedMindmap({ ...editedMindmap, description: e.target.value })}
                         rows={2}
@@ -321,6 +325,7 @@ export default function MindmapDetailPage() {
                         key={editorKey}
                         mindmap={editedMindmap}
                         onSave={handleUpdateMap}
+                        onDirtyChange={setGraphDirty}
                         readOnly={isEditing}
                     />
                   </div>
@@ -418,6 +423,7 @@ export default function MindmapDetailPage() {
                               <div className="flex items-center justify-between mb-2">
                                 <span className="text-sm font-medium">Veřejná mapa:</span>
                                 <Button
+                                    disabled
                                     variant={editedMindmap.isPublic ? "default" : "outline"}
                                     size="sm"
                                     className={cn(
@@ -435,8 +441,8 @@ export default function MindmapDetailPage() {
 
                               <div className="text-xs text-muted-foreground">
                                 {editedMindmap.isPublic
-                                    ? "Myšlenková mapa je viditelná pro všechny uživatele"
-                                    : "Myšlenková mapa je viditelná pouze pro vás"
+                                    ? "Ukázkové nastavení; demo mapy nezveřejňuje"
+                                    : "Mapa je uložena pouze v tomto prohlížeči"
                                 }
                               </div>
                             </div>

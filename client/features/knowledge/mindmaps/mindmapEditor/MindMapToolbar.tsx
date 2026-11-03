@@ -1,4 +1,4 @@
-import { useRef, KeyboardEvent } from 'react';
+import { useRef, useEffect, KeyboardEvent } from 'react';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';
 import { Plus, Link2, Save, Download, X, Share2 } from 'lucide-react';
@@ -42,6 +42,8 @@ export function MindMapToolbar({
 }: MindMapToolbarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => { if (isCreatingNode) inputRef.current?.focus(); }, [isCreatingNode]);
+
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       onAddNode();
@@ -51,7 +53,7 @@ export function MindMapToolbar({
   };
 
   return (
-    <div className="p-2 border-b flex items-center gap-2">
+    <div className="p-2 border-b flex flex-wrap items-center gap-2">
       {isCreatingNode ? (
         <>
           <Input
@@ -61,13 +63,12 @@ export function MindMapToolbar({
             onKeyDown={handleKeyDown}
             placeholder="Název uzlu..."
             className="w-48"
-            autoFocus
           />
           <Button size="sm" onClick={onAddNode} disabled={!nodeName}>
             <Plus className="h-4 w-4 mr-1" />
             Přidat
           </Button>
-          <Button size="sm" variant="ghost" onClick={onCancelCreate}>
+          <Button aria-label="Zrušit vytvoření uzlu" size="sm" variant="ghost" onClick={onCancelCreate}>
             <X className="h-4 w-4" />
           </Button>
         </>

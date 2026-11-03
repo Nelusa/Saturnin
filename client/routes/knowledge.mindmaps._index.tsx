@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { MindMapCreationSidebar } from "~/features/knowledge/mindmaps/MindMapCreationSidebar";
 import {
-  createMindMap,
+  createMindMap, saveMindMapToLocalStorage,
   getMindMapsFromLocalStorage, getMindMapFromLocalStorage,
 } from "~/utils/knowledge/mindmapUtils";
 import { useToast } from "~/hooks/use-toast";
@@ -67,13 +67,16 @@ export default function KnowledgeMindMapsPage() {
 
   //TODO (NL): Zkusit zařídit, aby se MOCK_MINDMAPS uložily do localStorage a pak už se mazaly stejně, jako nově vytvořené mapy
   useEffect(() => {
-    const local = getMindMapsFromLocalStorage();
-    const ids = new Set(local.map(m => m.id));
-    const uniqueServer = serverMaps.filter((m: { id: string; }) => !ids.has(m.id));
-    setMindmaps([...local, ...uniqueServer]
-        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    );
-  }, [serverMaps]);
+    try {
+      if (localStorage.getItem('mindmaps') === null) {
+        serverMaps.forEach((map: MindMap) => saveMindMapToLocalStorage(map));
+      }
+      setMindmaps(getMindMapsFromLocalStorage().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
+    } catch {
+      setMindmaps(serverMaps);
+      toast({ title: "Úložiště není dostupné", description: "Ukázkové mapy můžete prohlížet, ale změny nemusí jít uložit.", variant: "destructive" });
+    }
+  }, [serverMaps, toast]);
 
   const {
     handleDeleteMindMap,
@@ -127,10 +130,6 @@ export default function KnowledgeMindMapsPage() {
 
         setIsCreatingMindMap(false);
 
-        setTimeout(() => {
-          navigate(`/knowledge/mindmaps/${createdMindMap.id}`);
-        }, 300);
-
         navigate(`/knowledge/mindmaps/${createdMindMap.id}`);
       } else {
         toast({
@@ -178,13 +177,13 @@ export default function KnowledgeMindMapsPage() {
               <SearchX className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <h3 className="text-lg font-semibold mb-1">Žádné výsledky</h3>
               <p className="text-muted-foreground mb-4">
-                Pro vyhledávání "{searchTerm}" nebyly nalezeny žádné myšlenkové mapy.
+                Pro vyhledávání „{searchTerm}“ nebyly nalezeny žádné myšlenkové mapy.
               </p>
             </div>
         ) : filteredMindmaps.length === 0 ? (
             <Alert>
               <AlertDescription>
-                Zatím nemáš žádné myšlenkové mapy. Vytvoř novou pomocí tlačítka "Nová myšlenková mapa".
+                Zatím nemáš žádné myšlenkové mapy. Vytvoř novou pomocí tlačítka „Nová myšlenková mapa“.
               </AlertDescription>
             </Alert>
         ) : (

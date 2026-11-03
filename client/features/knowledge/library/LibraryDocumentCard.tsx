@@ -14,7 +14,7 @@ import { ChevronRight } from "lucide-react";
 import { cn } from "~/utils/helpers";
 import { formatDate } from "~/utils/dateUtils";
 import { DocumentItem } from "~/types/knowledge";
-import { TagsList, DocumentIcon, DocumentActions } from "./LibraryCommonComponents";
+import { TagsList, DocumentIcon } from "./LibraryCommonComponents";
 
 const DOCUMENT_DND_TYPE = "DOCUMENT_ITEM";
 
@@ -62,7 +62,7 @@ export function LibraryDocumentCard({
       index,
       title: item.title,
     }),
-    canDrag: () => isDraggable && item.type === "document",
+    canDrag: () => false,
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   });
 
@@ -72,7 +72,7 @@ export function LibraryDocumentCard({
 
   const [{ isOver, canDrop }, dropRef] = useDrop<DragItem, any, { isOver: boolean; canDrop: boolean }>({
     accept: DOCUMENT_DND_TYPE,
-    canDrop: (dragged) => isFolder && dragged.id !== item.id,
+    canDrop: () => false,
     drop: (dragged) => {
       if (onDrop && dragged.id !== item.id) {
         onDrop(dragged.id, item.id);
@@ -150,11 +150,7 @@ export function LibraryDocumentCard({
                 </div>
               </div>
 
-              <DocumentActions
-                  item={item}
-                  itemUrl={itemUrl}
-                  onEdit={onEdit}
-              />
+
             </div>
           </CardHeader>
 

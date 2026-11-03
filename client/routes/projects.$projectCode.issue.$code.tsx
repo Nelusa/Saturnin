@@ -1,3 +1,4 @@
+import { loadProjects } from "~/lib/demo.server";
 import {useLoaderData} from "@remix-run/react";
 import {LoaderFunctionArgs, MetaFunction} from "@remix-run/node";
 import {IssueDetail} from "~/features/issues/detail/IssueDetail";
@@ -12,20 +13,10 @@ export const meta: MetaFunction = ({ params }) => {
 };
 
 export async function loader({ params }: LoaderFunctionArgs) {
-  const { projectCode, code } = params;
-
-  try {
-    const response = await fetch(`http://localhost:8080/api/project/${projectCode}/issue/${code}`);
-
-    if (!response.ok) {
-      throw new Response("Issue nenalezeno", { status: 404 });
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error("Error loading issue:", error);
-    throw new Response("Issue nenalezeno", { status: 404 });
-  }
+  const projects = await loadProjects();
+  const issue = projects.find(project => project.code === params.projectCode)?.issues.find(issue => issue.code === params.code);
+  if (!issue) throw new Response("Issue nenalezeno", { status: 404 });
+  return issue;
 }
 
 export default function IssueDetailsPage() {

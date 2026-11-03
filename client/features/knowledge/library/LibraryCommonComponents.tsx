@@ -192,6 +192,7 @@ export function DocumentActions({
 }
 
 interface ExtendedDocumentDetailHeaderProps extends Partial<DocumentDetailProps> {
+  readOnly?: boolean;
   backUrl?: string;
   onDelete?: () => void;
   isSaving?: boolean;
@@ -207,6 +208,7 @@ export function DocumentIcon({ type }: { type: "document" | "folder" }) {
 }
 
 interface ExtendedDocumentDetailHeaderProps extends Partial<DocumentDetailProps> {
+  readOnly?: boolean;
   backUrl?: string;
   onDelete?: () => void;
   isSaving?: boolean;
@@ -222,6 +224,7 @@ export function DocumentDetailHeader({
                                        onUpdateDocument,
                                        onDelete,
                                        onEdit,
+                                       readOnly = true,
                                        backUrl = "/knowledge/library",
                                        isSaving = false,
                                        isDeleting = false
@@ -250,7 +253,7 @@ export function DocumentDetailHeader({
           </Link>
         </Button>
 
-        <div className="flex items-center gap-2">
+        {!readOnly && <div className="flex items-center gap-2">
           {isEditing ? (
               <>
                 <Button
@@ -301,7 +304,7 @@ export function DocumentDetailHeader({
                 />
               </>
           )}
-        </div>
+        </div>}
       </div>
   );
 }

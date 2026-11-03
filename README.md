@@ -1,5 +1,20 @@
 # Saturnin
 
+## Veřejná ukázka
+
+Výchozí spuštění Remixu používá veřejný demonstrační režim bez Deno/SurrealDB.
+
+```sh
+npm ci
+npm run client:dev
+```
+
+Vlastní myšlenkové mapy se ukládají do localStorage tohoto prohlížeče. Tlačítko Uložit v editoru ukládá uzly i propojení; chybu úložiště aplikace hlásí a ponechá změny otevřené. Dokumenty jsou jen k prohlížení. Úkoly, nastavení a sdílení jsou prototypy a nelze je prezentovat jako připojený SaaS.
+
+`SATURNIN_DEMO=false` zapne načítání projektů z `SATURNIN_API_URL` (výchozí `http://localhost:8080`). Tento přepínač nezprovozňuje autentizaci. Dokud nejsou implementované skutečné serverové sessions, chráněné čtení mimo demo přesměruje na přihlášení a chráněné zápisy zůstanou zakázané. Parametr `simulateAuth` neposkytuje oprávnění.
+
+`npm run typecheck` kontroluje Remix klienta a konfiguraci Vite/Vitestu. Samostatný Deno server vyžaduje vlastní Deno kontrolu; ta není součástí této Node kontroly.
+
 ## Development
 
 ### Before run
