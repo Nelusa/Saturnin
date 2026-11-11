@@ -43,4 +43,10 @@ attribution or pull requests. Project rules may add to them, never relax them.
 - Editing the description of an open pull request is fine. Never push to a branch whose pull
   request is merged, start a new branch.
 
+### When a rule doesn't fit
+
+- The `nelusa-…` blocks come from `Nelusa/agent-rules`, never edit inside them. When a task
+  conflicts with a rule, or a rule looks wrong or outdated, tell Nela and suggest the change for
+  `Nelusa/agent-rules` instead of working around it.
+
 <!-- END:nelusa-common -->
