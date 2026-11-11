@@ -1,5 +1,5 @@
-import { MouseEvent, useCallback, useEffect, useRef, useState } from "react";
-import ReactFlow, {
+import { MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import FlowCanvas, {
   addEdge,
   Background,
   Connection,
@@ -9,12 +9,17 @@ import ReactFlow, {
   MiniMap,
   Node,
   Panel,
+  ReactFlowInstance,
   useEdgesState,
   useNodesState,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { toPng, toSvg } from "html-to-image";
+import { downloadBlob, exportFilename, serializeMindMap } from "~/utils/knowledge/mindmapTransfer";
+import { rasterizeMindMap, renderMindMapSvg } from "~/utils/knowledge/mindmapImage";
 import { MindMap, MindMapConnection, MindMapNode as MindMapNodeType } from "~/types/knowledge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+import { Textarea } from "~/components/ui/textarea";
+import { Button } from "~/components/ui/button";
 import { TextNode } from "./TextNode";
 import { EdgeCreationDialog } from "./EdgeCreationDialog";
 import { MindMapToolbar } from "./MindMapToolbar";
@@ -28,6 +33,7 @@ interface InnerMindMapEditorProps {
   mindmap: MindMap;
   onSave: (updatedMindmap: MindMap) => void;
   readOnly?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 type TextNodeData = {
@@ -41,30 +47,33 @@ const nodeTypes = { textNode: TextNode };
 export function InnerMindMapEditor({
   mindmap,
   onSave,
+  onDirtyChange,
   readOnly = false,
 }: InnerMindMapEditorProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<TextNodeData> | null>(null);
   const { toast } = useToast();
 
-  const initialNodes = mindmap.nodes.map((n: MindMapNodeType) => ({
-    id: n.id,
-    type: "textNode",
-    position: { x: n.x, y: n.y },
-    data: { label: n.text, color: n.color, shape: n.shape || "rectangle" },
-  }));
-  const initialEdges = mindmap.connections.map((c: MindMapConnection) => ({
-    id: c.id,
-    source: c.sourceId,
-    target: c.targetId,
-    label: c.label || "",
-    markerEnd: { type: MarkerType.ArrowClosed },
-    style: {
-      strokeWidth: c.thickness || 1,
-      stroke: c.color || "#555",
-      strokeDasharray: c.style === "dashed" ? "5 5" : c.style === "dotted" ? "2 2" : undefined,
-    },
-  }));
+  const initialNodes = useMemo(() =>
+    mindmap.nodes.map((n: MindMapNodeType) => ({
+      id: n.id,
+      type: "textNode",
+      position: { x: n.x, y: n.y },
+      data: { label: n.text, color: n.color, shape: n.shape || "rectangle" },
+    })), [mindmap.nodes]);
+  const initialEdges = useMemo(() =>
+    mindmap.connections.map((c: MindMapConnection) => ({
+      id: c.id,
+      source: c.sourceId,
+      target: c.targetId,
+      label: c.label || "",
+      markerEnd: { type: MarkerType.ArrowClosed },
+      style: {
+        strokeWidth: c.thickness || 1,
+        stroke: c.color || "#555",
+        strokeDasharray: c.style === "dashed" ? "5 5" : c.style === "dotted" ? "2 2" : undefined,
+      },
+    })), [mindmap.connections]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -86,13 +95,17 @@ export function InnerMindMapEditor({
   const [colorPopoverOpen, setColorPopoverOpen] = useState(false);
   const [shapePopoverOpen, setShapePopoverOpen] = useState(false);
 
+  useEffect(() => {
+    onDirtyChange?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onDirtyChange]);
+
   const canConnect = nodes.length > 1 && !readOnly;
 
   useEffect(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
     setHasUnsavedChanges(false);
-  }, [mindmap.id]);
+  }, [mindmap.id, initialNodes, initialEdges, setNodes, setEdges]);
 
   useEffect(() => {
     if (selectedEdge) {
@@ -101,78 +114,80 @@ export function InnerMindMapEditor({
     }
   }, [edges, selectedEdge]);
 
+  const [backupPreview, setBackupPreview] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const graphSnapshot = () => ({
+    ...mindmap,
+    nodes: nodes.map((n) => ({
+      ...mindmap.nodes.find((previous) => previous.id === n.id),
+      id: n.id,
+      text: n.data.label,
+      x: n.position.x,
+      y: n.position.y,
+      color: n.data.color,
+      shape: n.data.shape,
+    })),
+    connections: edges.map((e) => ({
+      ...mindmap.connections.find((previous) => previous.id === e.id),
+      id: e.id,
+      sourceId: e.source,
+      targetId: e.target,
+      label: typeof e.label === "string" ? e.label : "",
+      style:
+        (e.style?.strokeDasharray === "5 5" ? "dashed" : e.style?.strokeDasharray === "2 2" ? "dotted" : "solid") as
+          | "solid"
+          | "dashed"
+          | "dotted",
+      color: e.style?.stroke?.toString() || "#555555",
+      thickness: Number(e.style?.strokeWidth) || 1,
+    })),
+    nodeCount: nodes.length,
+    isPublic: false,
+  });
   const handleExport = async (format: "png" | "json" | "svg") => {
-    if (!reactFlowWrapper.current || !reactFlowInstance) return;
-
+    if (isExporting) return;
+    setIsExporting(true);
     try {
+      const snapshot = graphSnapshot();
+      let blob: Blob;
       if (format === "json") {
-        const data = {
-          nodes: nodes,
-          edges: edges,
-        };
-        const jsonString = JSON.stringify(data, null, 2);
-        const blob = new Blob([jsonString], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `${mindmap.title}.json`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        setBackupPreview(serializeMindMap(snapshot));
+        return;
       } else {
-        reactFlowInstance.fitView({ duration: 0, padding: 0.2 });
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        const exportFunction = format === "png" ? toPng : toSvg;
-        const dataUrl = await exportFunction(reactFlowWrapper.current, {
-          backgroundColor: "#ffffff",
-          quality: 1,
-          width: reactFlowWrapper.current.offsetWidth,
-          height: reactFlowWrapper.current.offsetHeight,
-          style: {
-            width: "100%",
-            height: "100%",
-          },
-          filter: (node) => {
-            return !node.classList?.contains("react-flow__minimap");
-          },
-        });
-
-        const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = `${mindmap.title}.${format}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const image = renderMindMapSvg(snapshot);
+        blob = format === "svg"
+          ? new Blob([image.svg], { type: "image/svg+xml;charset=utf-8" })
+          : await rasterizeMindMap(image);
       }
+      downloadBlob(blob, exportFilename(mindmap.title, format));
       toast({
-        title: "Export úspěšný",
-        description: `Mindmapa byla exportována ve formátu ${format.toUpperCase()}`,
+        title: "Export připraven",
+        description: `Soubor ${format.toUpperCase()} byl předán prohlížeči ke stažení. Obsahuje i neuložené změny.`,
       });
-    } catch (error) {
-      console.error("Export failed:", error);
+    } catch (cause) {
       toast({
-        title: "Export selhal",
-        description: "Nepodařilo se exportovat mindmapu",
+        title: "Export se nepodařil",
+        description: cause instanceof Error ? cause.message : "Zkuste jiný formát.",
         variant: "destructive",
       });
+    } finally {
+      setIsExporting(false);
     }
   };
 
   const onAddNode = useCallback(() => {
-    if (!nodeName || !reactFlowInstance) return;
+    if (!nodeName.trim() || !reactFlowInstance) return;
     const pos = reactFlowInstance.screenToFlowPosition({
-      x: reactFlowWrapper.current!.clientWidth / 2,
-      y: reactFlowWrapper.current!.clientHeight / 2,
+      x: reactFlowWrapper.current!.getBoundingClientRect().left + reactFlowWrapper.current!.clientWidth / 2,
+      y: reactFlowWrapper.current!.getBoundingClientRect().top + reactFlowWrapper.current!.clientHeight / 2,
     });
     const color = NODE_COLORS[Math.floor(Math.random() * NODE_COLORS.length)];
     const newNode: Node<TextNodeData> = {
-      id: `node-${Date.now()}`,
+      id: `node-${crypto.randomUUID()}`,
       type: "textNode",
       position: pos,
       data: {
-        label: nodeName,
+        label: nodeName.trim(),
         color,
         shape: "rectangle",
       },
@@ -181,7 +196,7 @@ export function InnerMindMapEditor({
     setNodeName("");
     setIsCreatingNode(false);
     setHasUnsavedChanges(true);
-  }, [nodeName, reactFlowInstance]);
+  }, [nodeName, reactFlowInstance, setNodes]);
 
   const onConnect = useCallback((params: Connection) => {
     setPendingConnection(params);
@@ -196,68 +211,49 @@ export function InnerMindMapEditor({
     setEdges((eds) =>
       addEdge({
         ...pendingConnection,
-        id: `edge-${Date.now()}`,
+        id: `edge-${crypto.randomUUID()}`,
         label,
         markerEnd: { type: MarkerType.ArrowClosed },
         type: "smoothstep",
         style: { stroke: color, strokeWidth: 1, strokeDasharray: dash },
-        animated: style !== "solid",
+        animated: false,
       }, eds)
     );
     setPendingConnection(null);
     setIsEdgeDialogOpen(false);
     setHasUnsavedChanges(true);
-  }, [pendingConnection]);
+  }, [pendingConnection, setEdges]);
 
-  const updateEdge = useCallback((edgeId: string, props: any) => {
+  const updateEdge = useCallback((edgeId: string, patch: Partial<Pick<Edge, "style" | "label">>) => {
     setEdges((eds) =>
       eds.map((edge) => {
         if (edge.id === edgeId) {
-          if (props.style) {
+          if (patch.style) {
             const cur = { ...edge.style };
             delete cur.strokeDasharray;
-            return { ...edge, ...props, style: { ...cur, ...props.style } };
+            return { ...edge, ...patch, style: { ...cur, ...patch.style } };
           }
-          return { ...edge, ...props };
+          return { ...edge, ...patch };
         }
         return edge;
       })
     );
     setHasUnsavedChanges(true);
-  }, []);
+  }, [setEdges]);
 
-  const handleSave = useCallback(() => {
-    const mmNodes: MindMapNodeType[] = nodes.map((n) => ({
-      id: n.id,
-      text: n.data.label,
-      x: n.position.x,
-      y: n.position.y,
-      color: n.data.color,
-      shape: n.data.shape,
-    }));
-    const mmConns: MindMapConnection[] = edges.map((e) => {
-      let s: "solid" | "dashed" | "dotted" = "solid";
-      if (e.style?.strokeDasharray === "5 5") s = "dashed";
-      else if (e.style?.strokeDasharray === "2 2") s = "dotted";
-      return {
-        id: e.id,
-        sourceId: e.source,
-        targetId: e.target,
-        label: (e.label as string) || "",
-        style: s,
-        color: e.style?.stroke?.toString() || "#555",
-        thickness: Number(e.style?.strokeWidth) || 1,
-      };
-    });
-    onSave({
-      ...mindmap,
-      nodes: mmNodes,
-      connections: mmConns,
-      nodeCount: mmNodes.length,
-      updatedAt: new Date().toISOString(),
-    });
-    setHasUnsavedChanges(false);
-  }, [nodes, edges, mindmap, onSave]);
+  const handleSave = () => {
+    try {
+      onSave({ ...graphSnapshot(), updatedAt: new Date().toISOString() });
+      setHasUnsavedChanges(false);
+      toast({ title: "Mapa uložena", description: "Změny zůstanou v tomto prohlížeči." });
+    } catch (error) {
+      toast({
+        title: "Mapu se nepodařilo uložit",
+        description: error instanceof Error ? error.message : "Změny jsou stále otevřené. Zkuste mapu exportovat.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleNodeClick = useCallback((_: MouseEvent, node: Node) => {
     if (readOnly) return;
@@ -267,6 +263,21 @@ export function InnerMindMapEditor({
     setSelectedNode(node);
     setNewNodeName(node.data.label);
   }, [readOnly]);
+
+  const handleSelectionChange = useCallback(({ nodes: selection }: { nodes: Node[] }) => {
+    const node = selection[0];
+    if (readOnly || !node || selectedNode?.id === node.id) return;
+    setSelectedNode(node);
+    setSelectedEdge(null);
+    setNewNodeName(node.data.label);
+  }, [readOnly, selectedNode?.id]);
+
+  useEffect(() => {
+    if (selectedNode) {
+      const current = nodes.find((node) => node.id === selectedNode.id);
+      if (current !== selectedNode) setSelectedNode(current ?? null);
+    }
+  }, [nodes, selectedNode]);
 
   const handleEdgeClick = useCallback((e: MouseEvent, edge: Edge) => {
     if (readOnly) return;
@@ -286,14 +297,14 @@ export function InnerMindMapEditor({
     setEdges((es) => es.filter((e) => e.source !== selectedNode.id && e.target !== selectedNode.id));
     setSelectedNode(null);
     setHasUnsavedChanges(true);
-  }, [selectedNode]);
+  }, [selectedNode, setNodes, setEdges]);
 
   const handleDeleteEdge = useCallback(() => {
     if (!selectedEdge) return;
     setEdges((es) => es.filter((e) => e.id !== selectedEdge.id));
     setSelectedEdge(null);
     setHasUnsavedChanges(true);
-  }, [selectedEdge]);
+  }, [selectedEdge, setEdges]);
 
   const handleStartEditNodeName = useCallback(() => {
     if (!selectedNode) return;
@@ -307,7 +318,7 @@ export function InnerMindMapEditor({
     );
     setIsEditingNodeName(false);
     setHasUnsavedChanges(true);
-  }, [selectedNode, newNodeName]);
+  }, [selectedNode, newNodeName, setNodes]);
 
   const handleCancelEditNodeName = useCallback(() => {
     setIsEditingNodeName(false);
@@ -345,37 +356,43 @@ export function InnerMindMapEditor({
 
   return (
     <div className="flex flex-col h-full border rounded-lg overflow-hidden">
-      <MindMapToolbar
-        isCreatingNode={isCreatingNode}
-        nodeName={nodeName}
-        onNodeNameChange={setNodeName}
-        onAddNode={onAddNode}
-        onCancelCreate={() => {
-          setIsCreatingNode(!isCreatingNode);
-          setNodeName("");
-        }}
-        isConnecting={isConnecting}
-        canConnect={canConnect}
-        onToggleConnect={() => setIsConnecting(!isConnecting)}
-        hasUnsavedChanges={hasUnsavedChanges}
-        onSave={handleSave}
-        onExport={handleExport}
-      />
+      {!readOnly && (
+        <MindMapToolbar
+          isCreatingNode={isCreatingNode}
+          nodeName={nodeName}
+          onNodeNameChange={setNodeName}
+          onAddNode={onAddNode}
+          onCancelCreate={() => {
+            setIsCreatingNode(!isCreatingNode);
+            setNodeName("");
+          }}
+          isConnecting={isConnecting}
+          canConnect={canConnect}
+          onToggleConnect={() => setIsConnecting(!isConnecting)}
+          hasUnsavedChanges={hasUnsavedChanges}
+          onSave={handleSave}
+          onExport={handleExport}
+          isExporting={isExporting}
+        />
+      )}
 
       <div ref={reactFlowWrapper} className="flex-1 relative">
-        <ReactFlow
+        <FlowCanvas
           nodes={nodes}
           edges={edges}
           onNodesChange={(changes) => {
             onNodesChange(changes);
-            setHasUnsavedChanges(true);
+            if (
+              changes.some((change) => change.type !== "select" && change.type !== "dimensions")
+            ) setHasUnsavedChanges(true);
           }}
           onEdgesChange={(changes) => {
             onEdgesChange(changes);
-            setHasUnsavedChanges(true);
+            if (changes.some((change) => change.type !== "select")) setHasUnsavedChanges(true);
           }}
           onConnect={canConnect ? onConnect : undefined}
           onNodeClick={handleNodeClick}
+          onSelectionChange={handleSelectionChange}
           onEdgeClick={handleEdgeClick}
           onPaneClick={handlePaneClick}
           nodeTypes={nodeTypes}
@@ -386,7 +403,7 @@ export function InnerMindMapEditor({
           snapGrid={[15, 15]}
           defaultEdgeOptions={{
             type: "smoothstep",
-            animated: true,
+            animated: false,
             markerEnd: { type: MarkerType.ArrowClosed },
           }}
           proOptions={{ hideAttribution: true }}
@@ -407,7 +424,7 @@ export function InnerMindMapEditor({
               Klikni na zdrojový uzel a poté na cílový uzel pro vytvoření spojení
             </Panel>
           )}
-        </ReactFlow>
+        </FlowCanvas>
       </div>
 
       {selectedNode && !readOnly && (
@@ -451,6 +468,36 @@ export function InnerMindMapEditor({
         />
       )}
 
+      <Dialog
+        open={backupPreview !== null}
+        onOpenChange={(open) => {
+          if (!open) setBackupPreview(null);
+        }}
+      >
+        <DialogContent className="max-h-[90dvh] overflow-y-auto" aria-describedby="backup-export-description">
+          <DialogHeader>
+            <DialogTitle>Záloha mapy JSON</DialogTitle>
+          </DialogHeader>
+          <p id="backup-export-description" className="text-sm text-muted-foreground">
+            Úplná kopie této mapy včetně rozpracovaných změn. Stáhněte soubor nebo vyberte a zkopírujte obsah. V
+            přehledu jej obnovíte tlačítkem Importovat mapu.
+          </p>
+          <label htmlFor="backup-export" className="text-sm font-medium">Obsah zálohy</label>
+          <Textarea id="backup-export" readOnly value={backupPreview ?? ""} rows={9} className="font-mono text-xs" />
+          <Button
+            onClick={() => {
+              if (backupPreview) {
+                downloadBlob(
+                  new Blob([backupPreview], { type: "application/json;charset=utf-8" }),
+                  exportFilename(mindmap.title, "json"),
+                );
+              }
+            }}
+          >
+            Stáhnout JSON
+          </Button>
+        </DialogContent>
+      </Dialog>
       <EdgeCreationDialog
         isOpen={isEdgeDialogOpen}
         onClose={() => {

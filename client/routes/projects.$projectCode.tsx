@@ -1,27 +1,14 @@
+import { loadProjects } from "~/lib/demo.server";
 import { Link, Outlet, useLoaderData, useLocation, useParams } from "@remix-run/react";
 import { LoaderFunctionArgs } from "@remix-run/node";
 import { Card, CardContent } from "~/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 export async function loader({ params }: LoaderFunctionArgs) {
-  const projectCode = params.projectCode;
-
-  const response = await fetch(`http://localhost:8080/api/project/${projectCode}`);
-
-  if (!response.ok) {
-    throw new Response("Projekt nenalezen", { status: 404 });
-  }
-
-  const project = await response.json();
-
-  const issueResponse = await fetch(`http://localhost:8080/api/project/${projectCode}/issue`);
-  const issues = await issueResponse.json();
-
-  return new Response(JSON.stringify({ project, issues }), {
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+  const projects = await loadProjects();
+  const project = projects.find((project) => project.code === params.projectCode);
+  if (!project) throw new Response("Projekt nenalezen", { status: 404 });
+  return { project, issues: project.issues };
 }
 
 export default function ProjectLayout() {

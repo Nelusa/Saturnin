@@ -1,0 +1,44 @@
+name: Agent traces
+
+# Fails a pull request whose branch, commits or description carry traces of
+# the tool that wrote them. Runs again when the description is edited.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  no-agent-traces:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Check branch, commits and description
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          pattern='co-authored-by|claude-session|claude\.ai|claude\.com|anthropic|chatgpt\.com|openai\.com|generated (with|by) \[?(claude|codex)'
+          fail=0
+          if printf '%s' "$BRANCH" | grep -qiE '^(claude|codex)/'; then
+            echo "::error::Branch name '$BRANCH' starts with an agent prefix."; fail=1
+          fi
+          commits=$(git log --format='%H %an <%ae> %cn <%ce>%n%B' "$BASE_SHA..$HEAD_SHA")
+          if printf '%s' "$commits" | grep -iE "$pattern|<[^>]*anthropic[^>]*>|^[0-9a-f]{40} (claude|codex) "; then
+            echo "::error::A commit names the agent (author, committer or trailer)."; fail=1
+          fi
+          emails=$(git log --format='%ae%n%ce' "$BASE_SHA..$HEAD_SHA" | sort -u)
+          if printf '%s\n' "$emails" | grep -vE '^(98041631\+Nelusa@users\.noreply\.github\.com|noreply@github\.com|[0-9]+\+[a-z-]+\[bot\]@users\.noreply\.github\.com)$' | grep .; then
+            echo "::error::A commit uses an e-mail address other than Nela's GitHub noreply address."; fail=1
+          fi
+          if printf '%s' "$BODY" | grep -iE "$pattern"; then
+            echo "::error::The pull request description names the agent."; fail=1
+          fi
+          exit $fail

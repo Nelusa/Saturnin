@@ -195,6 +195,7 @@ export function DocumentActions({
 }
 
 interface ExtendedDocumentDetailHeaderProps extends Partial<DocumentDetailProps> {
+  readOnly?: boolean;
   backUrl?: string;
   onDelete?: () => void;
   isSaving?: boolean;
@@ -209,6 +210,7 @@ export function DocumentIcon({ type }: { type: "document" | "folder" }) {
 }
 
 interface ExtendedDocumentDetailHeaderProps extends Partial<DocumentDetailProps> {
+  readOnly?: boolean;
   backUrl?: string;
   onDelete?: () => void;
   isSaving?: boolean;
@@ -224,6 +226,7 @@ export function DocumentDetailHeader({
   onUpdateDocument,
   onDelete,
   onEdit,
+  readOnly = true,
   backUrl = "/knowledge/library",
   isSaving = false,
   isDeleting = false,
@@ -252,62 +255,64 @@ export function DocumentDetailHeader({
         </Link>
       </Button>
 
-      <div className="flex items-center gap-2">
-        {isEditing
-          ? (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => setIsEditing(false)}
-                className="gap-1"
-                disabled={isSaving}
-              >
-                <X className="h-4 w-4" />
-                <span>Zrušit</span>
-              </Button>
-              <Button
-                onClick={onSave}
-                className="gap-1"
-                disabled={isSaving}
-              >
-                {isSaving
-                  ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      <span>Ukládání...</span>
-                    </>
-                  )
-                  : (
-                    <>
-                      <Save className="h-4 w-4" />
-                      <span>Uložit změny</span>
-                    </>
-                  )}
-              </Button>
-            </>
-          )
-          : (
-            <>
-              <Button
-                variant="outline"
-                onClick={handleEdit}
-                className="gap-1"
-                disabled={isDeleting}
-              >
-                <Edit className="h-4 w-4" />
-                <span>Upravit</span>
-              </Button>
+      {!readOnly && (
+        <div className="flex items-center gap-2">
+          {isEditing
+            ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditing(false)}
+                  className="gap-1"
+                  disabled={isSaving}
+                >
+                  <X className="h-4 w-4" />
+                  <span>Zrušit</span>
+                </Button>
+                <Button
+                  onClick={onSave}
+                  className="gap-1"
+                  disabled={isSaving}
+                >
+                  {isSaving
+                    ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        <span>Ukládání...</span>
+                      </>
+                    )
+                    : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        <span>Uložit změny</span>
+                      </>
+                    )}
+                </Button>
+              </>
+            )
+            : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleEdit}
+                  className="gap-1"
+                  disabled={isDeleting}
+                >
+                  <Edit className="h-4 w-4" />
+                  <span>Upravit</span>
+                </Button>
 
-              <DocumentActions
-                item={document as DocumentItemBase}
-                itemUrl={document.path || `/knowledge/library/${document.id}`}
-                onEdit={handleEdit}
-                onDelete={onDelete}
-                isDeleting={isDeleting}
-              />
-            </>
-          )}
-      </div>
+                <DocumentActions
+                  item={document as DocumentItemBase}
+                  itemUrl={document.path || `/knowledge/library/${document.id}`}
+                  onEdit={handleEdit}
+                  onDelete={onDelete}
+                  isDeleting={isDeleting}
+                />
+              </>
+            )}
+        </div>
+      )}
     </div>
   );
 }

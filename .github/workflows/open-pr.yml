@@ -1,0 +1,60 @@
+name: Open pull request
+
+# Opens a pull request when a branch is pushed and none is open for it yet.
+# The title and description come from the first commit on the branch (subject
+# and body), so no tool ever adds its own footer to the description.
+#
+# Needs the repository secret PR_TOKEN: a fine-grained token with
+# "Pull requests: Read and write" and "Contents: Read". The default
+# GITHUB_TOKEN can't be used, because pull requests it opens don't run CI.
+
+on:
+  push:
+    branches:
+      - feat/**
+      - fix/**
+      - chore/**
+      - docs/**
+      - refactor/**
+      - perf/**
+      - test/**
+      - ci/**
+      - style/**
+      - build/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: open-pr-${{ github.ref }}
+
+jobs:
+  open:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Open the pull request
+        env:
+          GH_TOKEN: ${{ secrets.PR_TOKEN }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::The PR_TOKEN repository secret is not set."
+            exit 1
+          fi
+          open=$(gh pr list --repo "$REPO" --head "$BRANCH" --state open --json number --jq length)
+          if [ "$open" != "0" ]; then
+            echo "A pull request for $BRANCH is already open."
+            exit 0
+          fi
+          first=$(git rev-list --reverse origin/main..HEAD | head -n 1)
+          if [ -z "$first" ]; then
+            echo "No commits ahead of main, nothing to open."
+            exit 0
+          fi
+          gh pr create --repo "$REPO" --base main --head "$BRANCH" \
+            --title "$(git log -1 --format=%s "$first")" \
+            --body "$(git log -1 --format=%b "$first")"

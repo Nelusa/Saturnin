@@ -1,53 +1,21 @@
 import { redirect } from "@remix-run/node";
 import type { LoaderFunctionArgs } from "@remix-run/node";
+import { isDemoMode } from "~/lib/demo.server";
 
-/**
- * Authentication guard for protected routes
- * Redirects to login page if user is not authenticated
- */
-export async function requireAuth(args: LoaderFunctionArgs) {
-  const { request } = args;
-  // TODO (NL): Implementovat skutečnou kontrolu session
-
-  const isAuthenticated = await checkAuthStatus(request);
-
-  if (!isAuthenticated) {
-    // TODO (NL): Implementovat skutečné přesměrování na přihlašovací stránku
-    const url = new URL(request.url);
-    return redirect(`/login?redirectTo=${encodeURIComponent(url.pathname)}`);
+/** Until real sessions exist, never authorize shared writes using a URL flag. */
+export async function requireAuth({ request }: LoaderFunctionArgs) {
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    throw new Response(
+      "Veřejné demo nemění sdílené dokumenty. Vyzkoušejte vlastní myšlenkovou mapu uloženou v tomto prohlížeči.",
+      { status: 403 },
+    );
   }
-
-  // TODO (NL): Nahradit skutečným uživatelským ID
-  return { userId: "user-123" };
-}
-
-/**
- * Authentication guard for guest-only routes
- * Redirects to homepage if user is already authenticated
- */
-export async function requireGuest(args: LoaderFunctionArgs) {
-  const { request } = args;
-  // TODO (NL): Implementovat skutečnou kontrolu session
-  const isAuthenticated = await checkAuthStatus(request);
-
-  if (isAuthenticated) {
-    return redirect("/");
-  }
-
-  return null;
-}
-
-/**
- * Helper function to check authentication status
- * In a real implementation, this would access session data
- */
-async function checkAuthStatus(request: Request): Promise<boolean> {
-  // TODO (NL): Nahradit skutečnou verifikací session
-  // TODO (NL): Nahradit skutečným procesem ověření
+  if (isDemoMode()) return { userId: "demo-visitor" };
   const url = new URL(request.url);
-  const simulateAuth = url.searchParams.get("simulateAuth");
+  throw redirect(`/login?redirectTo=${encodeURIComponent(url.pathname)}`);
+}
 
-  // TODO (NL): Implementovat kontrolu cookies
-
-  return simulateAuth === "true";
+export async function requireGuest(_args: LoaderFunctionArgs) {
+  void _args;
+  return null;
 }

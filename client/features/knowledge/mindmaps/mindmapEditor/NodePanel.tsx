@@ -1,4 +1,5 @@
-import { MouseEvent, useCallback } from "react";
+import { nodeForeground } from "~/utils/knowledge/nodeAppearance";
+import { MouseEvent, useCallback, useEffect, useRef } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
@@ -6,7 +7,7 @@ import { Check, Edit, Palette, SquareAsterisk, Trash, X } from "lucide-react";
 import { NODE_COLORS } from "~/lib/constants";
 
 interface NodePanelProps {
-  selectedNode: any;
+  selectedNode: { data: { label: string; color: string } };
   newNodeName: string;
   onNewNameChange: (v: string) => void;
   editingNodeName: boolean;
@@ -38,6 +39,10 @@ export function NodePanel({
   onChangeShape,
   onDeleteNode,
 }: NodePanelProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (editingNodeName) inputRef.current?.focus();
+  }, [editingNodeName]);
   const stopPropagation = useCallback((e: MouseEvent) => e.stopPropagation(), []);
 
   return (
@@ -48,16 +53,29 @@ export function NodePanel({
           ? (
             <div className="flex items-center gap-1">
               <Input
+                aria-label="Název vybraného uzlu"
                 value={newNodeName}
                 onChange={(e) => onNewNameChange(e.target.value)}
                 className="h-8 text-xs w-48"
-                autoFocus
+                ref={inputRef}
                 onKeyDown={(e) => e.key === "Enter" && onFinishEdit()}
               />
-              <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={onFinishEdit}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 text-xs"
+                onClick={onFinishEdit}
+                aria-label="Uložit název uzlu"
+              >
                 <Check className="h-3 w-3" />
               </Button>
-              <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={onCancelEdit}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 text-xs"
+                onClick={onCancelEdit}
+                aria-label="Zrušit úpravu názvu"
+              >
                 <X className="h-3 w-3" />
               </Button>
             </div>
@@ -68,12 +86,18 @@ export function NodePanel({
                 className="px-2 py-1 bg-background border rounded-md text-xs"
                 style={{
                   backgroundColor: selectedNode.data.color || "white",
-                  color: selectedNode.data.color ? "white" : "inherit",
+                  color: nodeForeground(selectedNode.data.color || "#ffffff"),
                 }}
               >
                 {selectedNode.data.label}
               </div>
-              <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={onStartEdit}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 text-xs"
+                onClick={onStartEdit}
+                aria-label="Upravit název uzlu"
+              >
                 <Edit className="h-3 w-3" />
               </Button>
             </div>
@@ -92,6 +116,7 @@ export function NodePanel({
                 {NODE_COLORS.map((c) => (
                   <button
                     key={c}
+                    aria-label={`Barva ${c}`}
                     className="w-6 h-6 rounded-full border border-gray-200 transition-transform hover:scale-110"
                     style={{ backgroundColor: c }}
                     onClick={() => onChangeColor(c)}
@@ -112,18 +137,21 @@ export function NodePanel({
               <div className="flex gap-2">
                 <button
                   className="w-10 h-10 border rounded-md flex items-center justify-center hover:bg-gray-100"
+                  aria-label="Obdélník"
                   onClick={() => onChangeShape("rectangle")}
                 >
                   <div className="w-6 h-6 border border-gray-600 rounded-md" />
                 </button>
                 <button
                   className="w-10 h-10 border rounded-md flex items-center justify-center hover:bg-gray-100"
+                  aria-label="Elipsa"
                   onClick={() => onChangeShape("ellipse")}
                 >
                   <div className="w-6 h-6 border border-gray-600 rounded-full" />
                 </button>
                 <button
                   className="w-10 h-10 border rounded-md flex items-center justify-center hover:bg-gray-100"
+                  aria-label="Kosočtverec"
                   onClick={() => onChangeShape("diamond")}
                 >
                   <div className="w-6 h-6 border border-gray-600 transform rotate-45" />
