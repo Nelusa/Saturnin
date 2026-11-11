@@ -1,3 +1,4 @@
+import { nodeForeground } from "~/utils/knowledge/nodeAppearance";
 import { Handle, Position } from "reactflow";
 import { CSSProperties } from "react";
 
@@ -30,8 +31,8 @@ export function TextNode({ data, isConnectable, selected }: TextNodeProps) {
       className="px-4 py-2 shadow-md border border-gray-200 transition-all relative"
       style={{
         background: data.color || "white",
-        color: data.color ? "white" : "inherit",
-        boxShadow: selected ? "0 0 0 2px rgba(59, 130, 246, 0.8)" : undefined,
+        color: nodeForeground(data.color || "#ffffff"),
+        boxShadow: selected ? "0 0 0 3px hsl(var(--primary)), 0 0 0 5px hsl(var(--background))" : undefined,
         minWidth: "100px",
         minHeight: "40px",
         display: "flex",
@@ -65,7 +66,7 @@ export function TextNode({ data, isConnectable, selected }: TextNodeProps) {
         className="w-2 h-2 bg-primary/80 border border-background rounded-full"
       />
       <div
-        className="font-bold text-center"
+        className="font-medium text-center max-w-[240px] break-words"
         style={data.shape === "diamond" ? { transform: "rotate(-45deg)" } : {}}
       >
         {data.label}

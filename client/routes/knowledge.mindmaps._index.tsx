@@ -1,3 +1,5 @@
+import { MindMapImportDialog } from "~/features/knowledge/mindmaps/MindMapImportDialog";
+import { initializeMindMaps } from "~/utils/knowledge/mindmapStorage";
 import { useEffect, useState } from "react";
 import { useLoaderData, useNavigate } from "@remix-run/react";
 import { ActionFunction, LoaderFunction, MetaFunction, redirect } from "@remix-run/node";
@@ -7,9 +9,9 @@ import { useSearch } from "~/features/knowledge/KnowledgeLayout";
 import { MindMap, NewMindMap } from "~/types/knowledge";
 import { Button } from "~/components/ui/button";
 import { Alert, AlertDescription } from "~/components/ui/alert";
-import { Brain, Plus, SearchX } from "lucide-react";
+import { Brain, Plus, SearchX, Upload } from "lucide-react";
 import { MindMapCreationSidebar } from "~/features/knowledge/mindmaps/MindMapCreationSidebar";
-import { createMindMap, getMindMapFromLocalStorage, getMindMapsFromLocalStorage } from "~/utils/knowledge/mindmapUtils";
+import { createMindMap, getMindMapFromLocalStorage } from "~/utils/knowledge/mindmapUtils";
 import { useToast } from "~/hooks/use-toast";
 import { useMindMapActions } from "~/hooks/useMindMapActions";
 import { MindMapCard } from "~/features/knowledge/mindmaps/MindMapCard";
@@ -53,19 +55,29 @@ export default function KnowledgeMindMapsPage() {
   const { mindmaps: serverMaps } = useLoaderData<typeof loader>();
 
   const { toast } = useToast();
-  const [currentUser] = useState("Nela Letochová"); //TODO (NL): Získat aktuálního uživatele z API
+  const [currentUser] = useState("Moje mapy"); //TODO (NL): Získat aktuálního uživatele z API
   const [isCreatingMindMap, setIsCreatingMindMap] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [mindmaps, setMindmaps] = useState<MindMap[]>([]);
 
   //TODO (NL): Zkusit zařídit, aby se MOCK_MINDMAPS uložily do localStorage a pak už se mazaly stejně, jako nově vytvořené mapy
   useEffect(() => {
-    const local = getMindMapsFromLocalStorage();
-    const ids = new Set(local.map((m) => m.id));
-    const uniqueServer = serverMaps.filter((m: { id: string }) => !ids.has(m.id));
-    setMindmaps([...local, ...uniqueServer]
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()));
-  }, [serverMaps]);
+    try {
+      setMindmaps(
+        initializeMindMaps(serverMaps).sort((a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        ),
+      );
+    } catch {
+      setMindmaps(serverMaps);
+      toast({
+        title: "Úložiště není dostupné",
+        description: "Ukázkové mapy můžete prohlížet, ale změny nemusí jít uložit.",
+        variant: "destructive",
+      });
+    }
+  }, [serverMaps, toast]);
 
   const {
     handleDeleteMindMap,
@@ -113,11 +125,8 @@ export default function KnowledgeMindMapsPage() {
 
         setIsCreatingMindMap(false);
 
-        setTimeout(() => {
-          navigate(`/knowledge/mindmaps/${createdMindMap.id}`);
-        }, 300);
-
         navigate(`/knowledge/mindmaps/${createdMindMap.id}`);
+        return true;
       } else {
         toast({
           title: "Chyba při vytváření mapy",
@@ -135,11 +144,12 @@ export default function KnowledgeMindMapsPage() {
     } finally {
       setIsLoading(false);
     }
+    return false;
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-start gap-4">
         <h2 className="text-xl font-semibold flex items-center gap-2">
           <Brain className="h-5 w-5 text-primary" />
           Myšlenkové mapy
@@ -150,22 +160,35 @@ export default function KnowledgeMindMapsPage() {
           )}
         </h2>
 
-        <Button
-          className="flex items-center gap-1"
-          onClick={() => setIsCreatingMindMap(true)}
-        >
-          <Plus className="h-4 w-4" />
-          <span>Nová myšlenková mapa</span>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 size-4" />Importovat mapu
+          </Button>
+          <Button
+            className="flex items-center gap-1"
+            onClick={() => setIsCreatingMindMap(true)}
+          >
+            <Plus className="h-4 w-4" />
+            <span>Nová myšlenková mapa</span>
+          </Button>
+        </div>
       </div>
 
+      <section className="rounded-xl border bg-gradient-to-br from-primary/5 via-background to-background p-5 sm:p-6">
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary">Prostor pro souvislosti</p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Od myšlenky k propojenému celku.</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          Otevřete ukázku nebo vytvořte vlastní mapu. Přidejte myšlenky, propojte je a uložte výsledek. Mapy zůstávají v
+          tomto prohlížeči — k uchování mimo něj použijte export v editoru.
+        </p>
+      </section>
       {isSearching && filteredMindmaps.length === 0
         ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <SearchX className="h-12 w-12 text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-semibold mb-1">Žádné výsledky</h3>
             <p className="text-muted-foreground mb-4">
-              Pro vyhledávání "{searchTerm}" nebyly nalezeny žádné myšlenkové mapy.
+              Pro vyhledávání „{searchTerm}“ nebyly nalezeny žádné myšlenkové mapy.
             </p>
           </div>
         )
@@ -173,7 +196,7 @@ export default function KnowledgeMindMapsPage() {
         ? (
           <Alert>
             <AlertDescription>
-              Zatím nemáš žádné myšlenkové mapy. Vytvoř novou pomocí tlačítka "Nová myšlenková mapa".
+              Zatím nemáš žádné myšlenkové mapy. Vytvoř novou pomocí tlačítka „Nová myšlenková mapa“.
             </AlertDescription>
           </Alert>
         )
@@ -191,6 +214,14 @@ export default function KnowledgeMindMapsPage() {
           </div>
         )}
 
+      <MindMapImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={(map) => {
+          setMindmaps((previous) => [map, ...previous]);
+          navigate(`/knowledge/mindmaps/${map.id}`);
+        }}
+      />
       <MindMapCreationSidebar
         isOpen={isCreatingMindMap}
         onClose={() => setIsCreatingMindMap(false)}

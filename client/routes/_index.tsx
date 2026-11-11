@@ -1,10 +1,14 @@
+import { isDemoMode } from "~/lib/demo.server";
+export function loader() {
+  return isDemoMode() ? redirect("/knowledge/mindmaps") : null;
+}
 import { useState } from "react";
 import { IssueFull } from "~/types";
 import { useProjects } from "~/hooks/useProjects";
 import { useToast } from "~/hooks/use-toast";
 import { InboxIssueForm } from "~/features/inbox/InboxIssueForm";
 import { InboxIssueList } from "~/features/inbox/InboxIssueList";
-import { MetaFunction } from "@remix-run/node";
+import { MetaFunction, redirect } from "@remix-run/node";
 
 //TODO (NL): Nahradit issues reálnými daty z API
 const issues = [

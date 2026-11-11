@@ -32,6 +32,7 @@ export function useMindMapActions(onSuccess?: (action: string, map?: MindMap) =>
           variant: "destructive",
         });
       }
+      return success;
     } catch (error) {
       console.error(`Chyba při mazání myšlenkové mapy ${id}:`, error);
       toast({
@@ -39,6 +40,7 @@ export function useMindMapActions(onSuccess?: (action: string, map?: MindMap) =>
         description: "Nepodařilo se smazat myšlenkovou mapu. Zkus to prosím znovu.",
         variant: "destructive",
       });
+      return false;
     }
   };
 
@@ -60,8 +62,6 @@ export function useMindMapActions(onSuccess?: (action: string, map?: MindMap) =>
         if (onSuccess) {
           onSuccess("duplicate", duplicatedMap);
         }
-
-        await new Promise((resolve) => setTimeout(resolve, 200));
 
         navigate(`/knowledge/mindmaps/${duplicatedMap.id}`);
 

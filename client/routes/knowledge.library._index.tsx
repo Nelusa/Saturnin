@@ -303,6 +303,8 @@ export default function KnowledgeLibraryPage() {
             variant="outline"
             size="sm"
             className="flex items-center gap-1"
+            disabled
+            title="Dokumenty jsou v demu pouze k prohlížení"
             onClick={() => setIsNewFolderDialogOpen(true)}
           >
             <FolderPlus className="h-4 w-4" />
@@ -311,6 +313,8 @@ export default function KnowledgeLibraryPage() {
           <Button
             size="sm"
             className="flex items-center gap-1"
+            disabled
+            title="Dokumenty jsou v demu pouze k prohlížení"
             onClick={() => setIsNewDocumentDialogOpen(true)}
           >
             <FilePlus className="h-4 w-4" />
@@ -347,7 +351,7 @@ export default function KnowledgeLibraryPage() {
                 item={doc}
                 index={index}
                 onToggleFolder={handleToggleFolder}
-                isDraggable={true}
+                isDraggable={false}
                 onDrop={handleDocumentDropAction}
               />
             ))}

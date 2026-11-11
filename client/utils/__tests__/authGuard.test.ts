@@ -1,45 +1,26 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { requireAuth, requireGuest } from "~/utils/authGuard";
-import { redirect } from "@remix-run/node";
-
-vi.mock("@remix-run/node", () => ({
-  redirect: vi.fn(),
-}));
-
-describe("authGuard", () => {
-  describe("requireAuth", () => {
-    it("should redirect to login when not authenticated", async () => {
-      const mockRequest = new Request("http://localhost/test?simulateAuth=false");
-      const mockArgs = { request: mockRequest } as any;
-
-      await requireAuth(mockArgs);
-      expect(redirect).toHaveBeenCalledWith("/login?redirectTo=%2Ftest");
-    });
-
-    it("should return userId when authenticated", async () => {
-      const mockRequest = new Request("http://localhost/test?simulateAuth=true");
-      const mockArgs = { request: mockRequest } as any;
-
-      const result = await requireAuth(mockArgs);
-      expect(result).toEqual({ userId: "user-123" });
+import type { LoaderFunctionArgs } from "@remix-run/node";
+const args = (url: string, method = "GET") =>
+  ({ request: new Request(url, { method }), params: {}, context: {} }) as LoaderFunctionArgs;
+afterEach(() => vi.unstubAllEnvs());
+describe("public demo boundary", () => {
+  it("permits demo reads without pretending to authenticate a person", async () => {
+    vi.stubEnv("SATURNIN_DEMO", "true");
+    expect(await requireAuth(args("http://localhost/knowledge"))).toEqual({ userId: "demo-visitor" });
+  });
+  it.each(["POST", "PUT", "PATCH", "DELETE"])("rejects %s even with the old simulated login flag", async (method) => {
+    await expect(requireAuth(args("http://localhost/knowledge?simulateAuth=true", method))).rejects.toMatchObject({
+      status: 403,
     });
   });
-
-  describe("requireGuest", () => {
-    it("should redirect to home when authenticated", async () => {
-      const mockRequest = new Request("http://localhost/login?simulateAuth=true");
-      const mockArgs = { request: mockRequest } as any;
-
-      await requireGuest(mockArgs);
-      expect(redirect).toHaveBeenCalledWith("/");
+  it("throws the redirect when demo mode is disabled", async () => {
+    vi.stubEnv("SATURNIN_DEMO", "false");
+    await expect(requireAuth(args("http://localhost/knowledge?simulateAuth=true"))).rejects.toMatchObject({
+      status: 302,
     });
-
-    it("should return null when not authenticated", async () => {
-      const mockRequest = new Request("http://localhost/login?simulateAuth=false");
-      const mockArgs = { request: mockRequest } as any;
-
-      const result = await requireGuest(mockArgs);
-      expect(result).toBeNull();
-    });
+  });
+  it("does not treat a query flag as a real session on the login screen", async () => {
+    expect(await requireGuest(args("http://localhost/login?simulateAuth=true"))).toBeNull();
   });
 });

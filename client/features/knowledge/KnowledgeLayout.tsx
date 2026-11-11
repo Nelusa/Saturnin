@@ -77,7 +77,7 @@ export function KnowledgeLayout() {
   return (
     <SearchContext.Provider value={searchContextValue}>
       <ToastProvider>
-        <div className="container mx-auto py-4">
+        <div className="container mx-auto min-w-0 py-4">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="flex flex-col gap-1">
@@ -92,6 +92,7 @@ export function KnowledgeLayout() {
               <div className="relative w-full md:w-64">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
+                  aria-label="Hledat znalosti"
                   placeholder="Hledat znalosti..."
                   className="pl-8 pr-8"
                   value={searchTerm}
@@ -114,7 +115,7 @@ export function KnowledgeLayout() {
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="px-2 py-0.5">
                   <Search className="h-3 w-3 mr-1" />
-                  Vyhledávání: "{searchTerm}"
+                  Vyhledávání: &quot;{searchTerm}&quot;
                 </Badge>
                 <Button
                   variant="ghost"
@@ -129,11 +130,13 @@ export function KnowledgeLayout() {
 
             <Separator />
 
-            <Tabs value={activeTab} className="w-full">
-              <TabsList className="mb-6">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full min-w-0">
+              <TabsList
+                aria-label="Oblasti znalostí"
+                className="mb-6 grid h-auto w-full grid-cols-2 gap-1 sm:inline-flex sm:w-auto"
+              >
                 <TabsTrigger
                   value="library"
-                  onClick={() => handleTabChange("library")}
                   className="flex items-center gap-2"
                 >
                   <Book className="h-4 w-4" />
@@ -141,7 +144,6 @@ export function KnowledgeLayout() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="concepts"
-                  onClick={() => handleTabChange("concepts")}
                   className="flex items-center gap-2"
                 >
                   <Network className="h-4 w-4" />
@@ -149,7 +151,6 @@ export function KnowledgeLayout() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="mindmaps"
-                  onClick={() => handleTabChange("mindmaps")}
                   className="flex items-center gap-2"
                 >
                   <Brain className="h-4 w-4" />
@@ -157,7 +158,6 @@ export function KnowledgeLayout() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="tags"
-                  onClick={() => handleTabChange("tags")}
                   className="flex items-center gap-2"
                 >
                   <Tag className="h-4 w-4" />
