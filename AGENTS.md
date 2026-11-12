@@ -31,7 +31,10 @@ attribution or pull requests. Project rules may add to them, never relax them.
 ### Pull requests
 
 - Every change goes through a branch and a pull request, never straight to `main` (it deploys
-  production). Only Nela merges. One pull request does one thing.
+  production). Only Nela merges; the one exception is a rules sync from `Nelusa/agent-rules`,
+  which merges itself once its required checks pass.
+- One pull request does one thing. A repository with the `nelusa-light` block may bundle
+  related small changes, as that block says.
 - Don't open the pull request yourself: some tools add a footer that stays in the description's
   edit history even after it is removed. Push the branch and `.github/workflows/open-pr.yml`
   opens the pull request, with the subject of the first commit as the title and its body as the
@@ -39,6 +42,11 @@ attribution or pull requests. Project rules may add to them, never relax them.
 - Write that body with `git commit -F <file>`, an editor drops lines starting with `#`. Use the
   sections of `.github/pull_request_template.md` when the repository has one, otherwise
   `## What and why`, `## How it was verified` and `## What to review`.
+- Push when the change is ready for review, not after every commit: each push to a pull request
+  runs all its checks again, and a private repository pays for them in Actions minutes. Run
+  the checks you can locally first.
+  Push earlier only when you need a result that only CI can give (a test that needs a service
+  or a token you don't have), and say so in the description.
 - The merge method is set per repository on GitHub, don't change it.
 - Editing the description of an open pull request is fine. Never push to a branch whose pull
   request is merged, start a new branch.
