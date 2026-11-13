@@ -48,8 +48,12 @@ attribution or pull requests. Project rules may add to them, never relax them.
   Push earlier only when you need a result that only CI can give (a test that needs a service
   or a token you don't have), and say so in the description.
 - The merge method is set per repository on GitHub, don't change it.
-- Editing the description of an open pull request is fine. Never push to a branch whose pull
-  request is merged, start a new branch.
+- **From a cloud session (Claude Code on the web), never write to a pull request at all:** no
+  description, no edit of one, no comment, no review. The cloud's GitHub connection appends its
+  own footer to anything written there, and `.claude/settings.json` can't turn that off. The
+  description comes from the first commit; hand any later change to Nela as text to paste.
+- Editing the description of an open pull request is fine in the GitHub web UI or from a local
+  session. Never push to a branch whose pull request is merged, start a new branch.
 
 ### When a rule doesn't fit
 
