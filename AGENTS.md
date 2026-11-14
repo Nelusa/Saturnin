@@ -38,7 +38,7 @@ attribution or pull requests. Project rules may add to them, never relax them.
 - Don't open the pull request yourself: some tools add a footer that stays in the description's
   edit history even after it is removed. Push the branch and `.github/workflows/open-pr.yml`
   opens the pull request, with the subject of the first commit as the title and its body as the
-  description.
+  description. A branch stacked on other open pull requests gets its own first commit.
 - Write that body with `git commit -F <file>`, an editor drops lines starting with `#`. Use the
   sections of `.github/pull_request_template.md` when the repository has one, otherwise
   `## What and why`, `## How it was verified` and `## What to review`.
@@ -48,10 +48,12 @@ attribution or pull requests. Project rules may add to them, never relax them.
   Push earlier only when you need a result that only CI can give (a test that needs a service
   or a token you don't have), and say so in the description.
 - The merge method is set per repository on GitHub, don't change it.
-- **From a cloud session (Claude Code on the web), never write to a pull request at all:** no
-  description, no edit of one, no comment, no review. The cloud's GitHub connection appends its
-  own footer to anything written there, and `.claude/settings.json` can't turn that off. The
-  description comes from the first commit; hand any later change to Nela as text to paste.
+- **From a cloud session (Claude Code on the web), never write to a pull request through the
+  GitHub connection:** it appends its own footer to anything written there, and
+  `.claude/settings.json` can't turn that off. Write through `.github/workflows/pr-write.yml`
+  instead: start it on `main` (`run_workflow`) with the inputs `action` (`open`, `edit` or
+  `comment`), `pr`, `branch`, `title` and `body`. It writes as Nela with the `PR_TOKEN` secret and
+  refuses text that names the agent. Reviews and approvals stay with Nela.
 - Editing the description of an open pull request is fine in the GitHub web UI or from a local
   session. Never push to a branch whose pull request is merged, start a new branch.
 

@@ -1,0 +1,76 @@
+name: Write to pull request
+
+# Lets an agent in a cloud session write to a pull request without the footer its GitHub
+# connection adds to anything it posts. The agent starts this workflow on main (run_workflow)
+# with the text as inputs, and the workflow writes it as Nela with the PR_TOKEN secret.
+#   open:    a pull request from `branch` to main with `title` and `body`
+#   edit:    a new `title`, `body` or both for pull request `pr`
+#   comment: a comment `body` on pull request `pr`
+# Text that names the agent is refused, with the same pattern as agent-traces.yml.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: open, edit or comment
+        required: true
+        type: choice
+        options: [open, edit, comment]
+      pr:
+        description: Pull request number (edit, comment)
+        required: false
+      branch:
+        description: Head branch (open)
+        required: false
+      title:
+        description: Title (open, edit)
+        required: false
+      body:
+        description: Description or comment in Markdown (open, edit, comment)
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-write-${{ inputs.pr || inputs.branch }}
+
+jobs:
+  write:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write
+        env:
+          GH_TOKEN: ${{ secrets.PR_TOKEN }}
+          REPO: ${{ github.repository }}
+          ACTION: ${{ inputs.action }}
+          PR: ${{ inputs.pr }}
+          BRANCH: ${{ inputs.branch }}
+          TITLE: ${{ inputs.title }}
+          BODY: ${{ inputs.body }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::The PR_TOKEN repository secret is not set."
+            exit 1
+          fi
+          pattern='co-authored-by|claude-session|claude\.ai|claude\.com|anthropic|chatgpt\.com|openai\.com|generated (with|by) \[?(claude|codex)'
+          if printf '%s\n%s' "$TITLE" "$BODY" | grep -qiE "$pattern"; then
+            echo "::error::The text names the agent, nothing was written."
+            exit 1
+          fi
+          printf '%s' "$BODY" > "$RUNNER_TEMP/body.md"
+          case "$ACTION" in
+            open)
+              if [ -z "$BRANCH" ] || [ -z "$TITLE" ]; then echo "::error::open needs branch and title."; exit 1; fi
+              gh pr create --repo "$REPO" --base main --head "$BRANCH" --title "$TITLE" --body-file "$RUNNER_TEMP/body.md"
+              ;;
+            edit)
+              if [ -z "$PR" ] || { [ -z "$TITLE" ] && [ -z "$BODY" ]; }; then echo "::error::edit needs pr and a title or body."; exit 1; fi
+              if [ -n "$TITLE" ]; then gh pr edit "$PR" --repo "$REPO" --title "$TITLE"; fi
+              if [ -n "$BODY" ]; then gh pr edit "$PR" --repo "$REPO" --body-file "$RUNNER_TEMP/body.md"; fi
+              ;;
+            comment)
+              if [ -z "$PR" ] || [ -z "$BODY" ]; then echo "::error::comment needs pr and body."; exit 1; fi
+              gh pr comment "$PR" --repo "$REPO" --body-file "$RUNNER_TEMP/body.md"
+              ;;
+          esac
