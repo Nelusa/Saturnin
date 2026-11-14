@@ -31,8 +31,12 @@ attribution or pull requests. Project rules may add to them, never relax them.
 ### Pull requests
 
 - Every change goes through a branch and a pull request, never straight to `main` (it deploys
-  production). Only Nela merges; the one exception is a rules sync from `Nelusa/agent-rules`,
-  which merges itself once its required checks pass.
+  production). Only Nela merges, with two exceptions. A rules sync from `Nelusa/agent-rules`
+  merges itself once its required checks pass. And when Nela says in the conversation that the
+  agent may merge certain pull requests, turn on auto-merge for them (`enable_pr_auto_merge`, the
+  repository's merge method) instead of merging by hand: each merges itself once its required
+  checks pass, and `.github/workflows/restack.yml` moves the next pull requests of a stack onto
+  `main`. If auto-merge is not available, merge them by hand once the checks pass.
 - One pull request does one thing. A repository with the `nelusa-light` block may bundle
   related small changes, as that block says.
 - Don't open the pull request yourself: some tools add a footer that stays in the description's

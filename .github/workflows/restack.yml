@@ -1,0 +1,83 @@
+name: Restack pull requests
+
+# After every push to main, moves the open pull requests that have auto-merge turned on onto the
+# new main. Auto-merge is on only where Nela allowed the agent to merge (common rules), so nothing
+# else is touched. A pull request built on another open one waits until that one is merged.
+# Commits already in main (an earlier pull request of the stack, merged with new SHAs) are dropped
+# by the rebase. The push runs CI again, and auto-merge merges the pull request once it passes.
+# On a conflict nothing is pushed: auto-merge is turned off and a comment says so.
+#
+# Needs the PR_TOKEN secret with Contents, Workflows and Pull requests: Read and write. The push has
+# to start CI, which the default GITHUB_TOKEN can't, and a branch may change workflow files.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: restack
+
+jobs:
+  restack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PR_TOKEN || github.token }}
+      - name: Move auto-merge pull requests onto main
+        env:
+          GH_TOKEN: ${{ secrets.PR_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "PR_TOKEN is not set, nothing to do."
+            exit 0
+          fi
+          git config user.name "Nelča Letochová"
+          git config user.email "98041631+Nelusa@users.noreply.github.com"
+          gh pr list --repo "$REPO" --state open --base main \
+            --json number,headRefName,autoMergeRequest,isCrossRepository \
+            --jq '.[] | select(.autoMergeRequest != null and (.isCrossRepository | not)) | "\(.number) \(.headRefName)"' > "$RUNNER_TEMP/auto.txt"
+          if [ ! -s "$RUNNER_TEMP/auto.txt" ]; then
+            echo "No pull request with auto-merge."
+            exit 0
+          fi
+          open=$(gh pr list --repo "$REPO" --state open --base main --json headRefName --jq '.[].headRefName')
+          for b in $open; do git fetch --quiet origin "refs/heads/$b:refs/remotes/origin/$b" || true; done
+          while read -r number branch <&3; do
+            if git merge-base --is-ancestor origin/main "origin/$branch"; then
+              echo "#$number is up to date with main."
+              continue
+            fi
+            # Built on another open pull request? Its changes that are not in main yet (compared by patch,
+            # merges give new SHAs) are all in this branch too. Then wait until that one is merged.
+            waits=""
+            for other in $open; do
+              [ "$other" = "$branch" ] && continue
+              pending=$(git cherry origin/main "origin/$other" | awk '$1 == "+"' | wc -l)
+              missing=$(git cherry "origin/$branch" "origin/$other" | awk '$1 == "+"' | wc -l)
+              if [ "$pending" -gt 0 ] && [ "$missing" -eq 0 ]; then waits="$other"; break; fi
+            done
+            if [ -n "$waits" ]; then
+              echo "#$number waits for $waits."
+              continue
+            fi
+            old=$(git rev-parse "origin/$branch")
+            git checkout --quiet -B "$branch" "$old"
+            if git rebase --quiet origin/main; then
+              if git push --quiet --force-with-lease="$branch:$old" origin "$branch"; then
+                echo "#$number moved onto main."
+              else
+                echo "::warning::#$number could not be pushed. PR_TOKEN needs Contents and Workflows: Read and write."
+              fi
+            else
+              git rebase --abort
+              gh pr merge "$number" --repo "$REPO" --disable-auto
+              gh pr comment "$number" --repo "$REPO" --body "Moving this branch onto main hit a conflict, so auto-merge is turned off. Move the branch onto main by hand."
+              echo "#$number has a conflict, auto-merge turned off."
+            fi
+          done 3< "$RUNNER_TEMP/auto.txt"
