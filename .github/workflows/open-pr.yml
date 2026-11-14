@@ -50,7 +50,16 @@ jobs:
             echo "A pull request for $BRANCH is already open."
             exit 0
           fi
-          first=$(git rev-list --reverse origin/main..HEAD | head -n 1)
+          # A branch stacked on other open pull requests starts with their commits. Skip the commits
+          # of every open branch this one is built on, so the title and description come from this
+          # branch's own first commit.
+          below=""
+          for other in $(gh pr list --repo "$REPO" --state open --json headRefName --jq '.[].headRefName'); do
+            [ "$other" = "$BRANCH" ] && continue
+            git fetch --quiet origin "refs/heads/$other:refs/remotes/origin/$other" || continue
+            if git merge-base --is-ancestor "origin/$other" HEAD; then below="$below origin/$other"; fi
+          done
+          first=$(git rev-list --reverse HEAD --not origin/main $below | head -n 1)
           if [ -z "$first" ]; then
             echo "No commits ahead of main, nothing to open."
             exit 0
