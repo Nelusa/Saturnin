@@ -1,7 +1,7 @@
 name: Restack pull requests
 
-# After every push to main, moves the open pull requests that have auto-merge turned on onto the
-# new main. Auto-merge is on only where Nela allowed the agent to merge (common rules), so nothing
+# After every push to main, and whenever auto-merge is turned on for a pull request, moves the open
+# pull requests that have auto-merge turned on onto the new main. Auto-merge is on only where Nela allowed the agent to merge (common rules), so nothing
 # else is touched. A pull request built on another open one waits until that one is merged.
 # Commits already in main (an earlier pull request of the stack, merged with new SHAs) are dropped
 # by the rebase. The push runs CI again, and auto-merge merges the pull request once it passes.
@@ -13,6 +13,13 @@ name: Restack pull requests
 on:
   push:
     branches: [main]
+  # Auto-merge for the next pull request of a stack is turned on right after the one below it
+  # merges, often seconds after the push run above has listed the pull requests. Without this the
+  # next one waits for the next push to main, and GitHub shows it as conflicting meanwhile.
+  # `pull_request_target` runs this file from main, never code from the pull request, and the
+  # script skips pull requests from forks.
+  pull_request_target:
+    types: [auto_merge_enabled]
 
 permissions:
   contents: read
